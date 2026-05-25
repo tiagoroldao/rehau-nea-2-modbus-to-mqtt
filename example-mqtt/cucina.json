@@ -1,0 +1,39 @@
+{
+    "name": "Cucina",
+    "object_id": "rehau_tiago_upstairs_cucina",
+    "unique_id": "rehau_68e910f38397ef016ecb7f8e",
+    "device": {
+        "identifiers": [
+            "rehau_7c8f2d0c35394e434e42aecf303c5454"
+        ],
+        "name": "REHAU Tiago",
+        "manufacturer": "REHAU",
+        "model": "NEA SMART 2.0",
+        "sw_version": "5.1.9"
+    },
+    "current_temperature_topic": "homeassistant/climate/rehau_68e910f38397ef016ecb7f8e/current_temperature",
+    "temperature_state_topic": "homeassistant/climate/rehau_68e910f38397ef016ecb7f8e/target_temperature",
+    "temperature_command_topic": "homeassistant/climate/rehau_68e910f38397ef016ecb7f8e/temperature_command",
+    "current_humidity_topic": "homeassistant/climate/rehau_68e910f38397ef016ecb7f8e/current_humidity",
+    "mode_state_topic": "homeassistant/climate/rehau_68e910f38397ef016ecb7f8e/mode",
+    "mode_command_topic": "homeassistant/climate/rehau_68e910f38397ef016ecb7f8e/mode_command",
+    "modes": [
+        "off",
+        "heat"
+    ],
+    "preset_mode_state_topic": "homeassistant/climate/rehau_68e910f38397ef016ecb7f8e/preset",
+    "preset_mode_command_topic": "homeassistant/climate/rehau_68e910f38397ef016ecb7f8e/preset_command",
+    "preset_modes": [
+        "comfort",
+        "away"
+    ],
+    "availability_topic": "homeassistant/climate/rehau_68e910f38397ef016ecb7f8e/availability",
+    "payload_available": "online",
+    "payload_not_available": "offline",
+    "temperature_unit": "C",
+    "temp_step": 0.5,
+    "min_temp": 5,
+    "max_temp": 30,
+    "precision": 0.1,
+    "optimistic": true
+}
