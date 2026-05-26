@@ -9,8 +9,8 @@ const connection: RehauConnection = {
     data: createDefaultData(),
 };
 
-const stopModbus = startModbusServer(connection, modbusHost, modbusPort);
-const stopMqtt   = startMqttClient(connection);
+const { stop: stopMqtt, onRoomUpdate } = startMqttClient(connection);
+const stopModbus = startModbusServer(connection, modbusHost, modbusPort, onRoomUpdate);
 
 process.on("SIGINT",  () => { stopModbus(); stopMqtt(); });
 process.on("SIGTERM", () => { stopModbus(); stopMqtt(); });

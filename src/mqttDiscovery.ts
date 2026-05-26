@@ -10,6 +10,11 @@ export const TOPIC_MODE_COMMAND         = "mode_command";
 export const TOPIC_PRESET               = "preset";
 export const TOPIC_PRESET_COMMAND       = "preset_command";
 export const TOPIC_AVAILABILITY         = "availability";
+export const TOPIC_CONFIG               = "config";
+
+export function getRoomBaseTopic(room: RehauRoom, connection: RehauConnection): string {
+    return `${mqttTopic}/${connection.mqttPrefix}_room_${room.id}`;
+}
 
 export interface RoomMqttConfig {
   name: string;
@@ -60,7 +65,7 @@ export function createRoomMqttConfig(
   connection: RehauConnection,
 ): RoomMqttConfig {
   const entityId = `${connection.mqttPrefix}_room_${room.id}`;
-  const baseTopic = `${mqttTopic}/${entityId}`;
+  const baseTopic = getRoomBaseTopic(room, connection);
 
   return {
     name: `Room ${room.id}`,

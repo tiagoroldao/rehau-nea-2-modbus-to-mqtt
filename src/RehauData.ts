@@ -38,6 +38,13 @@ export interface RehauRoom {
     humidity: number;
 }
 
+export type RoomUpdate =
+    | { kind: 'created';     roomId: number }
+    | { kind: 'mode';        roomId: number }
+    | { kind: 'setpoint';    roomId: number }
+    | { kind: 'temperature'; roomId: number }
+    | { kind: 'humidity';    roomId: number };
+
 export interface RehauData {
     globalMode: RehauGlobalOperationMode;
     globalOperationStatus: RehauOperationStatus;

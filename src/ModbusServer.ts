@@ -1,40 +1,42 @@
 import { IServiceVector, ServerTCP } from "modbus-serial";
 import { log } from "./logger.js";
-import { RehauConnection, RehauData, createDefaultRoom } from "./RehauData.js";
+import { RehauConnection, RehauData, RoomUpdate, createDefaultRoom } from "./RehauData.js";
 import { decimalToDpt, dptValueToDecimal } from "./dpt9001.js";
 import {
     REG_GLOBAL_OPERATION_MODE, REG_GLOBAL_OPERATION_STATUS, REG_OUTSIDE_TEMPERATURE, REG_OUTSIDE_TEMP_FILTERED, ROOM_BASE,
     ROOM_OFFSET_STATUS, ROOM_OFFSET_SETPOINT, ROOM_OFFSET_TEMPERATURE, ROOM_OFFSET_HUMIDITY,
 } from "./modbusConstants.js";
 
-export function setRegister(data: RehauData, addr: number, value: number): void {
+export function setRegister(data: RehauData, addr: number, value: number): RoomUpdate[] {
     switch (addr) {
-        case REG_GLOBAL_OPERATION_MODE:   data.globalMode = value; return;
-        case REG_GLOBAL_OPERATION_STATUS: data.globalOperationStatus = value; return;
-        case REG_OUTSIDE_TEMPERATURE:     data.outsideTemperature = dptValueToDecimal(value); return;
-        case REG_OUTSIDE_TEMP_FILTERED:   data.outsideTemperatureFiltered = dptValueToDecimal(value); return;
+        case REG_GLOBAL_OPERATION_MODE:   data.globalMode = value; return [];
+        case REG_GLOBAL_OPERATION_STATUS: data.globalOperationStatus = value; return [];
+        case REG_OUTSIDE_TEMPERATURE:     data.outsideTemperature = dptValueToDecimal(value); return [];
+        case REG_OUTSIDE_TEMP_FILTERED:   data.outsideTemperatureFiltered = dptValueToDecimal(value); return [];
     }
 
-    if (addr < ROOM_BASE) return;
+    if (addr < ROOM_BASE) return [];
 
     const roomId = Math.floor(addr / ROOM_BASE);
     const offset = addr % ROOM_BASE;
 
-    let room = data.rooms.find(r => r.id === roomId);
-    if (!room) {
-        room = createDefaultRoom(roomId);
-        data.rooms.push(room);
+    const isNew = !data.rooms.find(r => r.id === roomId);
+    let room = isNew ? createDefaultRoom(roomId) : data.rooms.find(r => r.id === roomId)!;
+    if (isNew) data.rooms.push(room);
+
+    let fieldUpdate: RoomUpdate;
+    switch (offset) {
+        case ROOM_OFFSET_STATUS:      room.mode = value;                       fieldUpdate = { kind: 'mode',        roomId }; break;
+        case ROOM_OFFSET_SETPOINT:    room.setpoint = dptValueToDecimal(value); fieldUpdate = { kind: 'setpoint',    roomId }; break;
+        case ROOM_OFFSET_TEMPERATURE: room.temperature = dptValueToDecimal(value); fieldUpdate = { kind: 'temperature', roomId }; break;
+        case ROOM_OFFSET_HUMIDITY:    room.humidity = value;                    fieldUpdate = { kind: 'humidity',    roomId }; break;
+        default: return [];
     }
 
-    switch (offset) {
-        case ROOM_OFFSET_STATUS:      room.mode = value; break;
-        case ROOM_OFFSET_SETPOINT:    room.setpoint = dptValueToDecimal(value); break;
-        case ROOM_OFFSET_TEMPERATURE: room.temperature = dptValueToDecimal(value); break;
-        case ROOM_OFFSET_HUMIDITY:    room.humidity = value; break;
-    }
+    return isNew ? [{ kind: 'created', roomId }, fieldUpdate] : [fieldUpdate];
 }
 
-export function startModbusServer(connection: RehauConnection, host: string, port: number): () => void {
+export function startModbusServer(connection: RehauConnection, host: string, port: number, onRoomUpdate?: (update: RoomUpdate) => void): () => void {
     const { data, modbusAddress } = connection;
     const vector: IServiceVector = {
         getHoldingRegister(addr: number, unitID: number) {
@@ -66,7 +68,7 @@ export function startModbusServer(connection: RehauConnection, host: string, por
 
         setRegisterArray(addr: number, value: number[], unitID: number) {
             if (unitID !== modbusAddress && unitID !== 0) return;
-            value.forEach((v, i) => setRegister(data, addr + i, v));
+            value.forEach((v, i) => setRegister(data, addr + i, v).forEach(u => onRoomUpdate?.(u)));
         },
     };
 
