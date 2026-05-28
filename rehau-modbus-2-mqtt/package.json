@@ -1,0 +1,16 @@
+{
+  "name": "rehau-modbus-2-mqtt",
+  "version": "0.0.6",
+  "type": "module",
+  "description": "Runtime shell for the REHAU Nea Smart 2 Modbus bridge running as a Home Assistant add-on.",
+  "main": "./dist/main.js",
+  "scripts": {
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "modbus-serial": "^8.0.25",
+    "mqtt": "^5.15.1",
+    "pino": "^10.3.1",
+    "zod": "^4.4.3"
+  }
+}
