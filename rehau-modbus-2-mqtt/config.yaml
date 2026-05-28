@@ -11,10 +11,13 @@ arch:
 startup: services
 boot: auto
 
+ports:
+  502/tcp: 502
+ports_description:
+  502/tcp: Modbus entry port
+
 options:
   log_level: "info"
-  modbus_host: "0.0.0.0"
-  modbus_port: 502
   modbus_unit_id: 240
   mqtt_host: ""
   mqtt_port: 1883
@@ -27,8 +30,6 @@ options:
 
 schema:
   log_level: "list(trace|debug|info|warn|error|fatal)"
-  modbus_host: str
-  modbus_port: "int(1,65535)"
   modbus_unit_id: int
   mqtt_host: str
   mqtt_port: "int(1,65535)"

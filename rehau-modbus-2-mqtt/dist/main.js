@@ -27,29 +27,25 @@ var import_zod = require("zod");
 var boolEnv = import_zod.z.string().transform((v) => v === "true" || v === "1");
 var configSchema = import_zod.z.object({
   LOG_LEVEL: import_zod.z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
-  MODBUS_HOST: import_zod.z.string().default("0.0.0.0"),
-  MODBUS_PORT: import_zod.z.coerce.number().int().min(1).max(65535).default(502),
   MODBUS_UNIT_ID: import_zod.z.coerce.number().int().default(240),
   MQTT_HOST: import_zod.z.string().default("localhost"),
   MQTT_PORT: import_zod.z.coerce.number().int().min(1).max(65535).default(1883),
   MQTT_PROTOCOL: import_zod.z.enum(["mqtt", "mqtts", "ws", "wss"]).default("mqtt"),
   MQTT_USERNAME: import_zod.z.string().default(""),
   MQTT_PASSWORD: import_zod.z.string().default(""),
-  MQTT_REJECT_UNAUTHORIZED: boolEnv.default(false),
   MQTT_ENTITY_PREFIX: import_zod.z.string().default("rehau"),
   MQTT_TOPIC: import_zod.z.string().default("homeassistant/climate")
 });
 var parsed = configSchema.parse(process.env);
-var logLevel = parsed.LOG_LEVEL;
-var modbusHost = parsed.MODBUS_HOST;
-var modbusPort = parsed.MODBUS_PORT;
+var modbusHost = "0.0.0.0";
+var modbusPort = 502;
 var unitNumber = parsed.MODBUS_UNIT_ID;
+var logLevel = parsed.LOG_LEVEL;
 var mqttHost = parsed.MQTT_HOST;
 var mqttPort = parsed.MQTT_PORT;
 var mqttProtocol = parsed.MQTT_PROTOCOL;
 var mqttUsername = parsed.MQTT_USERNAME;
 var mqttPassword = parsed.MQTT_PASSWORD;
-var mqttRejectUnauthorized = parsed.MQTT_REJECT_UNAUTHORIZED;
 var mqttEntityPrefix = parsed.MQTT_ENTITY_PREFIX;
 var mqttTopic = parsed.MQTT_TOPIC;
 
@@ -363,8 +359,7 @@ function startMqttClient(connection2) {
   const opts = {
     host: mqttHost,
     port: mqttPort,
-    protocol: mqttProtocol,
-    rejectUnauthorized: mqttRejectUnauthorized
+    protocol: mqttProtocol
   };
   if (mqttUsername) opts.username = mqttUsername;
   if (mqttPassword) opts.password = mqttPassword;

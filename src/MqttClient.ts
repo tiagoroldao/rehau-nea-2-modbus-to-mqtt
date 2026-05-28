@@ -5,7 +5,6 @@ import {
   mqttProtocol,
   mqttUsername,
   mqttPassword,
-  mqttRejectUnauthorized,
   mqttTopic,
 } from "./config";
 import {
@@ -131,7 +130,6 @@ export function startMqttClient(connection: RehauConnection): {
     host: mqttHost,
     port: mqttPort,
     protocol: mqttProtocol,
-    rejectUnauthorized: mqttRejectUnauthorized,
   };
   if (mqttUsername) opts.username = mqttUsername;
   if (mqttPassword) opts.password = mqttPassword;
