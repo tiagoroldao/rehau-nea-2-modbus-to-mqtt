@@ -1,5 +1,5 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-nodejs:20
-FROM $BUILD_FROM AS builder
+ARG BUILD_FROM
+FROM ${BUILD_FROM}
 
 WORKDIR /build
 COPY package.json yarn.lock ./
@@ -10,7 +10,7 @@ COPY src/ ./src/
 RUN npx tsc
 
 # --- runtime ---
-FROM $BUILD_FROM
+FROM ${BUILD_FROM}
 
 WORKDIR /app
 COPY package.json yarn.lock ./
