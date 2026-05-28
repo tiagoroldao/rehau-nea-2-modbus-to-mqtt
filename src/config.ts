@@ -6,8 +6,8 @@ const configSchema = z.object({
     
     MODBUS_UNIT_ID:           z.coerce.number().int().default(240),
 
-    MQTT_HOST:                z.string().default("localhost"),
-    MQTT_PORT:                z.coerce.number().int().min(1).max(65535).default(1883),
+    MQTT_HOST:                z.string(),
+    MQTT_PORT:                z.coerce.number().int().min(1).max(65535),
     MQTT_PROTOCOL:            z.enum(["mqtt", "mqtts", "ws", "wss"]).default("mqtt"),
     MQTT_USERNAME:            z.string().default(""),
     MQTT_PASSWORD:            z.string().default(""),
