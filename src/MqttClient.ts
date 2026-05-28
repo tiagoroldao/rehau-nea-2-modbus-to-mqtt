@@ -33,28 +33,23 @@ function publishRoom(client: mqtt.MqttClient, update: RoomUpdate, connection: Re
     switch (update.kind) {
         case 'created':
             const info = JSON.stringify(createRoomMqttConfig(room, connection));
-            // logger.info('Publishing room info', room.id, info);
             client.publish(`${base}/${TOPIC_CONFIG}`, info, { retain: true });
             client.publish(`${base}/${TOPIC_AVAILABILITY}`, "online", { retain: true });
             break;
         case 'temperature':
             if (room.temperature !== EMPTY_TEMP_VALUE)
-                // logger.info('Publishing room temperature', room.id, room.temperature);
                 client.publish(`${base}/${TOPIC_CURRENT_TEMPERATURE}`, room.temperature.toFixed(1));
             break;
         case 'setpoint':
             if (room.setpoint !== EMPTY_TEMP_VALUE)
-                logger.info('Publishing room setpoint', room.id, room.setpoint);
                 client.publish(`${base}/${TOPIC_TARGET_TEMPERATURE}`, room.setpoint.toFixed(1));
             break;
         case 'humidity':
             if (room.humidity !== EMPTY_HUMIDITY_VALUE)
-                // logger.info('Publishing room humidity', room.id, room.humidity);
                 client.publish(`${base}/${TOPIC_CURRENT_HUMIDITY}`, room.humidity.toString());
             break;
         case 'mode':
             if (room.mode !== RehauOperationStatus.Null) {
-                // logger.info('Publishing room mode', room.id, roomModeToHaMode(room.mode));
                 client.publish(`${base}/${TOPIC_MODE}`,   roomModeToHaMode(room.mode));
                 client.publish(`${base}/${TOPIC_PRESET}`, RehauOperationStatus[room.mode]);
             }
@@ -77,7 +72,7 @@ export function startMqttClient(connection: RehauConnection): { stop: () => void
     client.on("connect", () => {
         logger.info("MQTT connected");
         client.subscribe(`${mqttTopic}/#`, (err) => {
-            if (err) console.error("MQTT subscribe error: %s", err.message);
+            if (err) logger.error("MQTT subscribe error: %s", err.message);
         });
     });
 
