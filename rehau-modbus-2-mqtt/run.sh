@@ -36,5 +36,5 @@ elif bashio::services.available "mqtt"; then
   bashio::log.info "Using HA-provided MQTT broker: ${MQTT_URL}"
 fi
 
-cd app
+cd /app
 exec node dist/main.js
