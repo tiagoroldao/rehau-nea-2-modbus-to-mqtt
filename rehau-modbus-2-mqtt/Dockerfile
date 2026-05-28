@@ -1,5 +1,5 @@
 ARG BUILD_FROM
-FROM ${BUILD_FROM}
+FROM ${BUILD_FROM} AS builder
 
 WORKDIR /build
 COPY package.json yarn.lock ./
