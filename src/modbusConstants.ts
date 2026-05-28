@@ -38,3 +38,6 @@ export const REG_DEHUMIDIFIER_LAST  = 30;
 // Pump state registers (up to 5)
 export const REG_PUMP_FIRST = 31;
 export const REG_PUMP_LAST  = 35;
+
+export const MAX_SETPOINT_CELCIUS = 30;
+export const MIN_SETPOINT_CELCIUS = 5;

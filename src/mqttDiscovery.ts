@@ -1,5 +1,6 @@
-import { mqttTopic } from "./config.js";
-import { RehauConnection, RehauRoom } from "./RehauData.js";
+import { mqttTopic } from "./config";
+import { MAX_SETPOINT_CELCIUS, MIN_SETPOINT_CELCIUS } from "./modbusConstants";
+import { RehauConnection, RehauRoom } from "./RehauData";
 
 export const TOPIC_CURRENT_TEMPERATURE  = "current_temperature";
 export const TOPIC_TARGET_TEMPERATURE   = "target_temperature";
@@ -12,7 +13,7 @@ export const TOPIC_PRESET_COMMAND       = "preset_command";
 export const TOPIC_AVAILABILITY         = "availability";
 export const TOPIC_CONFIG               = "config";
 
-export function getRoomBaseTopic(room: RehauRoom, connection: RehauConnection): string {
+export function getRoomBaseTopic(room: Pick<RehauRoom, 'id'>, connection: Pick<RehauConnection, 'mqttPrefix'>): string {
     return `${mqttTopic}/${connection.mqttPrefix}_room_${room.id}`;
 }
 
@@ -98,8 +99,8 @@ export function createRoomMqttConfig(
     payload_not_available: "offline",
     temperature_unit: "C",
     temp_step: 0.5,
-    min_temp: 5,
-    max_temp: 30,
+    min_temp: MIN_SETPOINT_CELCIUS,
+    max_temp: MAX_SETPOINT_CELCIUS,
     precision: 0.1,
     optimistic: true,
   };

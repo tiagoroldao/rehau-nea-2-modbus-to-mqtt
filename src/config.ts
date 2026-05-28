@@ -1,8 +1,10 @@
-export const useDebug = true;
+import { type Level } from "pino";
+
+export const logLevel: Level = 'debug';
 
 export const modbusHost   = "0.0.0.0";
 export const modbusPort   = 502;
-export const unitNumber   = 241;
+export const unitNumber   = 240;
 
 export const mqttHost              = "localhost";
 export const mqttPort              = 1883;

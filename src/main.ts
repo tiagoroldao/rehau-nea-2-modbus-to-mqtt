@@ -1,7 +1,7 @@
-import { modbusHost, modbusPort, mqttEntityPrefix, unitNumber } from "./config.js";
-import { RehauConnection, createDefaultData } from "./RehauData.js";
-import { startModbusServer } from "./ModbusServer.js";
-import { startMqttClient } from "./MqttClient.js";
+import { modbusHost, modbusPort, mqttEntityPrefix, unitNumber } from "./config";
+import { RehauConnection, createDefaultData } from "./RehauData";
+import { startModbusServer } from "./ModbusServer";
+import { startMqttClient } from "./MqttClient";
 
 const connection: RehauConnection = {
     mqttPrefix: mqttEntityPrefix,
