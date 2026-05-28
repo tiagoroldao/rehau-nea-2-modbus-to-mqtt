@@ -1,6 +1,6 @@
 {
   "name": "rehau-nea-2-modbus-to-mqtt",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "main": "index",
   "repository": "https://github.com/tiagoroldao/rehau-nea-2-modbus-to-mqtt.git",
   "author": "Tiago Roldão <focus5.6@gmail.com>",

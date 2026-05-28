@@ -6,6 +6,7 @@ RUN apk add --no-cache nodejs npm bash tini
 WORKDIR /app
 
 COPY dist ./dist
+COPY package.json ./
 COPY run.sh /run.sh
 RUN chmod +x /run.sh \
  && npm install --omit=dev --no-audit --no-fund --loglevel=error
