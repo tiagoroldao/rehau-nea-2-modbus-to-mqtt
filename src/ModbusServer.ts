@@ -1,8 +1,8 @@
-import { IServiceVector, ServerTCP } from "modbus-serial";
+import { type IServiceVector, ServerTCP } from "modbus-serial";
 import {
-  RehauConnection,
-  RehauData,
-  RoomUpdate,
+  type RehauConnection,
+  type RehauData,
+  type RoomUpdate,
   createDefaultRoom,
 } from "./RehauData";
 import { decimalToDpt, dptValueToDecimal } from "./dpt9001";
@@ -19,10 +19,8 @@ import {
   MAX_SETPOINT_CELCIUS,
   MIN_SETPOINT_CELCIUS,
 } from "./modbusConstants";
-import pino from "pino";
-import { logLevel } from "./config";
+import { logger } from "./config";
 
-const logger = pino({ level: logLevel});
 
 export function setRegister(
   data: RehauData,

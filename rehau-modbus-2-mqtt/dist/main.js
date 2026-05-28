@@ -1,6 +1,6 @@
 // src/config.ts
 import { z } from "zod";
-var boolEnv = z.string().transform((v) => v === "true" || v === "1");
+import pino from "pino";
 var configSchema = z.object({
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
   MODBUS_UNIT_ID: z.coerce.number().int().default(240),
@@ -24,6 +24,8 @@ var mqttUsername = parsed.MQTT_USERNAME;
 var mqttPassword = parsed.MQTT_PASSWORD;
 var mqttEntityPrefix = parsed.MQTT_ENTITY_PREFIX;
 var mqttTopic = parsed.MQTT_TOPIC;
+var logger = pino({ level: logLevel, transport: { target: "pino-pretty" } });
+logger.info("configuration: %o", parsed);
 
 // src/RehauData.ts
 var EMPTY_TEMP_VALUE = 0;
@@ -83,8 +85,6 @@ var MAX_SETPOINT_CELCIUS = 30;
 var MIN_SETPOINT_CELCIUS = 5;
 
 // src/ModbusServer.ts
-import pino from "pino";
-var logger = pino({ level: logLevel });
 function setRegister(data, addr, value) {
   switch (addr) {
     case REG_GLOBAL_OPERATION_MODE:
@@ -250,8 +250,6 @@ function createRoomMqttConfig(room, connection2) {
 }
 
 // src/MqttClient.ts
-import pino2 from "pino";
-var logger2 = pino2({ level: logLevel });
 function roomModeToHaMode(mode) {
   switch (mode) {
     case 3 /* Standby */:
@@ -270,7 +268,7 @@ function publishRoom(client, update, connection2) {
   switch (update.kind) {
     case "created":
       const info = JSON.stringify(createRoomMqttConfig(room, connection2));
-      logger2.debug("Publishing MQTT room info for room %s: %o", room.id, info);
+      logger.debug("Publishing MQTT room info for room %s: %o", room.id, info);
       client.publish(`${base}/${TOPIC_CONFIG}`, info, { retain: true });
       client.publish(`${base}/${TOPIC_AVAILABILITY}`, "online", {
         retain: true
@@ -278,7 +276,7 @@ function publishRoom(client, update, connection2) {
       break;
     case "temperature":
       if (room.temperature !== EMPTY_TEMP_VALUE) {
-        logger2.debug(
+        logger.debug(
           "Publishing MQTT room temperature for room %s: %s",
           room.id,
           room.temperature
@@ -291,7 +289,7 @@ function publishRoom(client, update, connection2) {
       break;
     case "setpoint":
       if (room.setpoint !== EMPTY_TEMP_VALUE) {
-        logger2.debug(
+        logger.debug(
           "Publishing MQTT room setpoint for room %s: %s",
           room.id,
           room.temperature
@@ -304,7 +302,7 @@ function publishRoom(client, update, connection2) {
       break;
     case "humidity":
       if (room.humidity !== EMPTY_HUMIDITY_VALUE) {
-        logger2.debug(
+        logger.debug(
           "Publishing MQTT room humidity for room %s: %s",
           room.id,
           room.temperature
@@ -317,7 +315,7 @@ function publishRoom(client, update, connection2) {
       break;
     case "mode":
       if (room.mode !== 10 /* Null */) {
-        logger2.debug(
+        logger.debug(
           "Publishing MQTT mode for room %s: %s",
           room.id,
           roomModeToHaMode(room.mode)
@@ -341,9 +339,9 @@ function startMqttClient(connection2) {
   if (mqttPassword) opts.password = mqttPassword;
   const client = mqtt.connect(opts);
   client.on("connect", () => {
-    logger2.info("MQTT connected");
+    logger.info("MQTT connected");
     client.subscribe(`${mqttTopic}/#`, (err) => {
-      if (err) logger2.error("MQTT subscribe error: %s", err.message);
+      if (err) logger.error("MQTT subscribe error: %s", err.message);
     });
   });
   client.on("message", (topic, message) => {
@@ -388,7 +386,7 @@ function startMqttClient(connection2) {
       }
     }
   });
-  client.on("error", (err) => logger2.error("MQTT error: %s", err.message));
+  client.on("error", (err) => logger.error("MQTT error: %o", err));
   return {
     stop: () => client.end(),
     onRoomUpdate: (update) => publishRoom(client, update, connection2)

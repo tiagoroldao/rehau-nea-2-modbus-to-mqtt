@@ -1,6 +1,5 @@
 import { z } from "zod";
-
-const boolEnv = z.string().transform(v => v === "true" || v === "1");
+import pino from "pino";
 
 const configSchema = z.object({
     LOG_LEVEL:                z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
@@ -31,3 +30,7 @@ export const mqttUsername           = parsed.MQTT_USERNAME;
 export const mqttPassword           = parsed.MQTT_PASSWORD;
 export const mqttEntityPrefix       = parsed.MQTT_ENTITY_PREFIX;
 export const mqttTopic              = parsed.MQTT_TOPIC;
+
+export const logger = pino({ level: logLevel, transport: { target: 'pino-pretty'}});
+
+logger.info("configuration: %o", parsed);

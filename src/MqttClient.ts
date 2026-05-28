@@ -6,12 +6,13 @@ import {
   mqttUsername,
   mqttPassword,
   mqttTopic,
+  logger,
 } from "./config";
 import {
-  RehauConnection,
+  type RehauConnection,
   RehauOperationStatus,
-  RehauRoom,
-  RoomUpdate,
+  type RehauRoom,
+  type RoomUpdate,
   EMPTY_TEMP_VALUE,
   EMPTY_HUMIDITY_VALUE,
 } from "./RehauData";
@@ -30,10 +31,6 @@ import {
   getRoomBaseTopic,
   createRoomMqttConfig,
 } from "./mqttDiscovery";
-import pino from "pino";
-import { logLevel } from "./config";
-
-const logger = pino({ level: logLevel });
 
 function roomModeToHaMode(mode: RehauOperationStatus): string {
   switch (mode) {
@@ -189,7 +186,7 @@ export function startMqttClient(connection: RehauConnection): {
     }
   });
 
-  client.on("error", (err) => logger.error("MQTT error: %s", err.message));
+  client.on("error", (err) => logger.error("MQTT error: %o", err));
 
   return {
     stop: () => client.end(),
