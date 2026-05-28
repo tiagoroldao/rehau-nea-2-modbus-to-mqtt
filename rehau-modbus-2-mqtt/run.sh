@@ -1,4 +1,9 @@
-#!/usr/bin/with-contenv bashio
+#!/usr/bin/env bash
+
+# bashio gives typed helpers for /data/options.json and HA service discovery.
+# It's available in every official addon base image.
+# shellcheck source=/dev/null
+source /usr/lib/bashio/bashio.sh
 
 opt() { bashio::config "$1" "${2:-}"; }
 
