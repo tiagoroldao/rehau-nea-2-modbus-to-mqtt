@@ -1,13 +1,14 @@
 {
   "name": "rehau-nea-2-modbus-to-mqtt",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "main": "index",
+  "type": "module",
   "repository": "https://github.com/tiagoroldao/rehau-nea-2-modbus-to-mqtt.git",
   "author": "Tiago Roldão <focus5.6@gmail.com>",
   "license": "MIT",
   "scripts": {
     "dev-run": "ts-node src/main.ts",
-    "build": "tsup src/main.ts -d rehau-modbus-2-mqtt/dist"
+    "build": "tsup src/main.ts"
   },
   "dependencies": {
     "modbus-serial": "^8.0.25",

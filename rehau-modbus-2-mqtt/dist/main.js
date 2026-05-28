@@ -1,40 +1,16 @@
-"use strict";
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-
 // src/config.ts
-var import_zod = require("zod");
-var boolEnv = import_zod.z.string().transform((v) => v === "true" || v === "1");
-var configSchema = import_zod.z.object({
-  LOG_LEVEL: import_zod.z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
-  MODBUS_UNIT_ID: import_zod.z.coerce.number().int().default(240),
-  MQTT_HOST: import_zod.z.string().default("localhost"),
-  MQTT_PORT: import_zod.z.coerce.number().int().min(1).max(65535).default(1883),
-  MQTT_PROTOCOL: import_zod.z.enum(["mqtt", "mqtts", "ws", "wss"]).default("mqtt"),
-  MQTT_USERNAME: import_zod.z.string().default(""),
-  MQTT_PASSWORD: import_zod.z.string().default(""),
-  MQTT_ENTITY_PREFIX: import_zod.z.string().default("rehau"),
-  MQTT_TOPIC: import_zod.z.string().default("homeassistant/climate")
+import { z } from "zod";
+var boolEnv = z.string().transform((v) => v === "true" || v === "1");
+var configSchema = z.object({
+  LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
+  MODBUS_UNIT_ID: z.coerce.number().int().default(240),
+  MQTT_HOST: z.string().default("localhost"),
+  MQTT_PORT: z.coerce.number().int().min(1).max(65535).default(1883),
+  MQTT_PROTOCOL: z.enum(["mqtt", "mqtts", "ws", "wss"]).default("mqtt"),
+  MQTT_USERNAME: z.string().default(""),
+  MQTT_PASSWORD: z.string().default(""),
+  MQTT_ENTITY_PREFIX: z.string().default("rehau"),
+  MQTT_TOPIC: z.string().default("homeassistant/climate")
 });
 var parsed = configSchema.parse(process.env);
 var modbusHost = "0.0.0.0";
@@ -76,7 +52,7 @@ function createDefaultData() {
 }
 
 // src/ModbusServer.ts
-var import_modbus_serial = require("modbus-serial");
+import { ServerTCP } from "modbus-serial";
 
 // src/dpt9001.ts
 function dptValueToDecimal(value) {
@@ -107,8 +83,8 @@ var MAX_SETPOINT_CELCIUS = 30;
 var MIN_SETPOINT_CELCIUS = 5;
 
 // src/ModbusServer.ts
-var import_pino = __toESM(require("pino"));
-var logger = (0, import_pino.default)({ level: logLevel });
+import pino from "pino";
+var logger = pino({ level: logLevel });
 function setRegister(data, addr, value) {
   switch (addr) {
     case REG_GLOBAL_OPERATION_MODE:
@@ -195,7 +171,7 @@ function startModbusServer(connection2, host, port, onRoomUpdate2) {
     }
   };
   logger.info(`ModbusTCP listening on modbus://${host}:${port}`);
-  const server = new import_modbus_serial.ServerTCP(vector, { host, port, debug: true });
+  const server = new ServerTCP(vector, { host, port, debug: true });
   server.on("error", (err) => logger.error(err));
   server.on("serverError", (err) => logger.error(err));
   server.on("socketError", (err) => {
@@ -206,7 +182,7 @@ function startModbusServer(connection2, host, port, onRoomUpdate2) {
 }
 
 // src/MqttClient.ts
-var import_mqtt = __toESM(require("mqtt"));
+import mqtt from "mqtt";
 
 // src/mqttDiscovery.ts
 var TOPIC_CURRENT_TEMPERATURE = "current_temperature";
@@ -274,8 +250,8 @@ function createRoomMqttConfig(room, connection2) {
 }
 
 // src/MqttClient.ts
-var import_pino2 = __toESM(require("pino"));
-var logger2 = (0, import_pino2.default)({ level: logLevel });
+import pino2 from "pino";
+var logger2 = pino2({ level: logLevel });
 function roomModeToHaMode(mode) {
   switch (mode) {
     case 3 /* Standby */:
@@ -363,7 +339,7 @@ function startMqttClient(connection2) {
   };
   if (mqttUsername) opts.username = mqttUsername;
   if (mqttPassword) opts.password = mqttPassword;
-  const client = import_mqtt.default.connect(opts);
+  const client = mqtt.connect(opts);
   client.on("connect", () => {
     logger2.info("MQTT connected");
     client.subscribe(`${mqttTopic}/#`, (err) => {
@@ -435,3 +411,4 @@ process.on("SIGTERM", () => {
   stopModbus();
   stopMqtt();
 });
+//# sourceMappingURL=main.js.map
