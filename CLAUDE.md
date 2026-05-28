@@ -4,14 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-A TypeScript gateway that bridges a **REHAU NEA SMART 2.0** heating/room-control system (via Modbus TCP) with **MQTT** for Home Assistant integration. It sets up a modbus-over-tcp server (i.e. Modbus slave) that the REHAU system communicates to as a TCP client (Modbus master). TCP port and unit id are configurable via config file.
+A TypeScript gateway that bridges a **REHAU NEA SMART 2.0** heating/room-control system (via Modbus TCP) with **MQTT** for Home Assistant integration. It sets up a Modbus TCP server (slave) that the REHAU system connects to as master. All connection settings are in `src/config.ts`.
 
 ## Commands
 
 ```bash
-# Run a TypeScript file directly (no build step needed for development)
-npx ts-node src/modbus-test.ts
-npx ts-node src/mqtt-test.ts
+# Run the app directly (no build step needed)
+npx ts-node src/main.ts
 
 # Build to dist/
 npx tsc
@@ -24,19 +23,57 @@ No test or lint scripts are configured yet.
 
 ## Architecture
 
-The project is in early development. The system will be comprised of:
+### Data flow
 
-- A class meant to hold data in-memory, and bridge MQTT and Modbus systems
-- A Modbus server (using `modbus-serial`) that:
-    - Synchronizes data:
-        - Global operation mode and status
-        - How many rooms exist in the system (as REHAU will send data on a per-room basis)
+```
+REHAU NEA SMART 2.0
+      ↕ Modbus TCP (slave on configured host:port, unit ID)
+  ModbusServer.ts
+      ↕ RoomUpdate events (created | mode | setpoint | temperature | humidity)
+  MqttClient.ts
+      ↕ MQTT  homeassistant/climate/rehau_room_{id}/{subtopic}
+  Home Assistant
+```
 
-**`src/main.ts`** — entry point, currently empty; integration logic goes here.
+- **Modbus → MQTT**: When REHAU writes registers, `setRegister` returns typed `RoomUpdate[]`. The server fires `onRoomUpdate` for each, triggering the MQTT client to publish to the corresponding topic.
+- **MQTT → Modbus**: Command messages update `RehauData` directly. REHAU picks up changes on its next read cycle.
 
-**`src/dpt9001.ts`** — DPT 9.001 decoder: values >2048 are negative offsets. Formula: values ≤2048 → `value/100`°C; values >2048 → `((value-2048)*2)/100`°C (e.g., 3098 → 21.0°C).
+### Key source files
 
-**`src/experiments/`** — reference-only test files for Modbus and MQTT. Do not use as production code.
+**`src/main.ts`** — entry point. Creates `RehauConnection`, starts both services, wires the `onRoomUpdate` callback from MQTT client to Modbus server, handles `SIGINT`/`SIGTERM`.
+
+**`src/RehauData.ts`** — all shared data types:
+- `RehauConnection` — config (`mqttPrefix`, `modbusAddress`) + live `data`
+- `RehauData` — live state: global mode/status, outside temperatures, rooms array
+- `RehauRoom` — per-room: `id`, `mode` (RehauOperationStatus), `setpoint`, `temperature`, `humidity`
+- `RoomUpdate` — discriminated union of update events fired by `setRegister`
+- `EMPTY_*` constants — sentinel values REHAU recognises as "no data yet", triggering a write-back
+- Enum values match Modbus wire values (1-based); `Null = 10` is the empty sentinel
+
+**`src/ModbusServer.ts`** — Modbus TCP server using `modbus-serial`:
+- `setRegister(data, addr, value): RoomUpdate[]` — updates a single register; returns `[{kind:'created'}, {kind:fieldType}]` for new rooms, `[{kind:fieldType}]` for existing ones, `[]` for global registers
+- `startModbusServer(connection, host, port, onRoomUpdate?)` — starts server, calls `onRoomUpdate` for every update from `setRegisterArray`
+- `getHoldingRegister` creates rooms with default values on first read (REHAU probing)
+
+**`src/MqttClient.ts`** — MQTT client using `mqtt`:
+- `startMqttClient(connection)` returns `{ stop, onRoomUpdate }`
+- `onRoomUpdate` publishes to the specific topic matching the update kind; `created` publishes discovery config + availability
+- Subscribes to `{mqttTopic}/#`; ignores messages for unknown rooms or rooms with empty (uninitialized) data
+
+**`src/mqttDiscovery.ts`** — MQTT topic constants (`TOPIC_*`), `parseRoomTopic`, `getRoomBaseTopic`, and `createRoomMqttConfig` (builds Home Assistant MQTT discovery payload)
+
+**`src/modbusConstants.ts`** — all Modbus register address constants (`REG_*`, `ROOM_OFFSET_*`, `ROOM_BASE`, `MIN/MAX_SETPOINT_CELCIUS`)
+
+**`src/dpt9001.ts`** — DPT 9.001 encoder/decoder. Values ≤2048 → `value/100`°C; values >2048 → `((value-2048)*2)/100`°C.
+
+**`src/experiments/`** — reference-only scripts for Modbus and MQTT. Do not use as production code.
+
+## MQTT topic structure
+
+Entity ID format: `{mqttEntityPrefix}_room_{roomId}` (e.g. `rehau_room_1`)
+Base topic: `{mqttTopic}/{entityId}` (e.g. `homeassistant/climate/rehau_room_1`)
+
+Subtopics: `config`, `availability`, `current_temperature`, `target_temperature`, `temperature_command`, `current_humidity`, `mode`, `mode_command`, `preset`, `preset_command`
 
 ## Modbus Register Map
 
@@ -58,11 +95,11 @@ Source: NEA SMART 2.0 KNX Gateway commissioning manual (`nea-smart-2-0-knx-gatew
 
 ### Room zone registers
 
-Address formula: `N = 100 + k×100` where `k` is 0-based room zone index (0 ≤ k < 60).
+Address formula: `N = roomId × 100` (roomId is 1-based, matches `RehauRoom.id`).
 
 | Offset | Example addresses | Description | Access | Encoding |
 |--------|-------------------|-------------|--------|----------|
-| YY00 | 100, 200, …, 6000 | Local operation status | R/W | 1-based (same as global status) |
+| YY00 | 100, 200, …, 6000 | Local operation status | R/W | RehauOperationStatus (1-based) |
 | YY01 | 101, 201, …, 6001 | Set temperature | R/W | DPT 9.001 |
 | YY02 | 102, 202, …, 6002 | Actual zone temperature | R | DPT 9.001 |
 | YY10 | 110, 210, …, 6010 | Relative humidity | R | 0–100 % |
@@ -74,7 +111,7 @@ Address formula: `N = 100 + k×100` where `k` is 0-based room zone index (0 ≤ 
 
 ### Mixed circuit registers (IDs 10–21)
 
-Each circuit has 4 registers: opening %, pump state, flow temp (DPT 9.001), return temp (DPT 9.001). All 4 must be present to enable a circuit.
+Each circuit has 4 registers: opening %, pump state, flow temp (DPT 9.001), return temp (DPT 9.001).
 
 | IDs | Circuit |
 |-----|---------|

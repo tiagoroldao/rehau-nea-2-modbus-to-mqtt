@@ -1,0 +1,40 @@
+name: "REHAU NEA Smart 2.0 Modbus to MQTT"
+description: "Bridges a REHAU NEA Smart 2.0 heating system (Modbus TCP slave) with MQTT for Home Assistant integration."
+version: "0.1.0"
+slug: "rehau_nea2_modbus_mqtt"
+init: false
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+startup: services
+boot: auto
+
+options:
+  log_level: "info"
+  modbus_host: "0.0.0.0"
+  modbus_port: 502
+  modbus_unit_id: 240
+  mqtt_host: ""
+  mqtt_port: 1883
+  mqtt_protocol: "mqtt"
+  mqtt_username: ""
+  mqtt_password: ""
+  mqtt_reject_unauthorized: false
+  mqtt_entity_prefix: "rehau"
+  mqtt_topic: "homeassistant/climate"
+
+schema:
+  log_level: "list(trace|debug|info|warn|error|fatal)"
+  modbus_host: str
+  modbus_port: "int(1,65535)"
+  modbus_unit_id: int
+  mqtt_host: str
+  mqtt_port: "int(1,65535)"
+  mqtt_protocol: "list(mqtt|mqtts|ws|wss)"
+  mqtt_username: str
+  mqtt_password: str
+  mqtt_reject_unauthorized: bool
+  mqtt_entity_prefix: str
+  mqtt_topic: str
