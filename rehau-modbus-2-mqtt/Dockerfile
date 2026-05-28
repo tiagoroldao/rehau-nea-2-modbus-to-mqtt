@@ -1,23 +1,10 @@
-ARG BUILD_FROM
-FROM ${BUILD_FROM} AS builder
-
-WORKDIR /build
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
-
-COPY tsconfig.json ./
-COPY src/ ./src/
-RUN npx tsc
-
-# --- runtime ---
+ARG BUILD_FROM=ghcr.io/hassio-addons/base:17.1.4
 FROM ${BUILD_FROM}
 
 WORKDIR /app
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --production
 
-COPY --from=builder /build/dist ./dist
-COPY rehau-modbus-2-mqtt/run.sh /run.sh
+COPY dist /dist
+COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
 CMD ["/run.sh"]

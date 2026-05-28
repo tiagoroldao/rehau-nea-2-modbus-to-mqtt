@@ -15,4 +15,4 @@ export MQTT_REJECT_UNAUTHORIZED=$(bashio::config 'mqtt_reject_unauthorized')
 export MQTT_ENTITY_PREFIX=$(bashio::config 'mqtt_entity_prefix')
 export MQTT_TOPIC=$(bashio::config 'mqtt_topic')
 
-exec node /app/dist/main.js
+exec node /dist/main.js

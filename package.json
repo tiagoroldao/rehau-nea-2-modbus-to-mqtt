@@ -6,7 +6,8 @@
   "author": "Tiago Roldão <focus5.6@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "dev-run": "ts-node"
+    "dev-run": "ts-node src/main.ts",
+    "build": "tsup src/main.ts -d rehau-modbus-2-mqtt/dist"
   },
   "dependencies": {
     "modbus-serial": "^8.0.25",
@@ -16,6 +17,8 @@
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
+    "tsc": "^2.0.4",
+    "tsup": "^8.5.1",
     "typescript": "^6.0.3"
   }
 }
