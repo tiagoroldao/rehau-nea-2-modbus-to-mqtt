@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # bashio gives typed helpers for /data/options.json and HA service discovery.
 # It's available in every official addon base image.
 # shellcheck source=/dev/null
@@ -25,7 +27,7 @@ MQTT_PROTOCOL_OPT=$(opt 'mqtt_protocol')
 MQTT_USERNAME_OPT="$(opt mqtt_username)"
 MQTT_PASSWORD_OPT="$(opt mqtt_password)"
 
-if [ -n "${MQTT_HOST_OPT}" ] && [ -n "${MQTT_PORT_OPT}" ]; then
+if [ -n "${MQTT_HOST_OPT}" ]; then
   export MQTT_HOST="${MQTT_HOST_OPT}"
   export MQTT_PORT="${MQTT_PORT_OPT}"
   export MQTT_PROTOCOL="${MQTT_PROTOCOL_OPT}"
