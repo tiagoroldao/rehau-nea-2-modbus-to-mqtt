@@ -1,11 +1,6 @@
-#!/usr/bin/env bash
+#!/usr/bin/with-contenv bashio
 
 set -euo pipefail
-
-# bashio gives typed helpers for /data/options.json and HA service discovery.
-# It's available in every official addon base image.
-# shellcheck source=/dev/null
-source /usr/lib/bashio/bashio.sh
 
 opt() { bashio::config "$1" "${2:-}"; }
 
@@ -34,10 +29,10 @@ if [ -n "${MQTT_HOST_OPT}" ]; then
   export MQTT_USERNAME="${MQTT_USERNAME_OPT}"
   export MQTT_PASSWORD="${MQTT_PASSWORD_OPT}"
   bashio::log.info "Using explicit MQTT broker: ${MQTT_HOST}:${MQTT_PORT}"
-elif bashio::services.available "mqtt"; then
-  MQTT_HOST="$(bashio::services mqtt 'host')"
-  MQTT_PORT="$(bashio::services mqtt 'port')"
-  MQTT_PROTOCOL="$(bashio::services mqtt 'protocol')"
+elif bashio::services.available 'mqtt'; then
+  export MQTT_HOST="$(bashio::services mqtt 'host')"
+  export MQTT_PORT="$(bashio::services mqtt 'port')"
+  export MQTT_PROTOCOL="mqtt"
   export MQTT_USERNAME="$(bashio::services mqtt 'username')"
   export MQTT_PASSWORD="$(bashio::services mqtt 'password')"
   bashio::log.info "Using HA-provided MQTT broker: ${MQTT_HOST}:${MQTT_PORT}"

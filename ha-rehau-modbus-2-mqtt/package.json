@@ -1,5 +1,5 @@
 {
-  "name": "rehau-modbus-2-mqtt",
+  "name": "ha-rehau-modbus-2-mqtt",
   "version": "0.0.14",
   "type": "module",
   "description": "Runtime shell for the REHAU Nea Smart 2 Modbus bridge running as a Home Assistant add-on.",

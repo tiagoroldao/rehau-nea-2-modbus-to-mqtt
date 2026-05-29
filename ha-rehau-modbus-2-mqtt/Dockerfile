@@ -1,5 +1,5 @@
 ARG BUILD_FROM=ghcr.io/hassio-addons/base:17.1.4
-FROM ${BUILD_FROM}
+FROM ghcr.io/home-assistant/base:latest
 
 RUN apk add --no-cache nodejs npm bash tini
 
