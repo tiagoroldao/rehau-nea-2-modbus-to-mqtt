@@ -9,7 +9,7 @@ source /usr/lib/bashio/bashio.sh
 
 opt() { bashio::config "$1" "${2:-}"; }
 
-export LOG_LEVEL=$(bashio::config 'log_level')
+export LOG_LEVEL=$(opt 'log_level')
 
 export MODBUS_HOST=$(opt 'modbus_host')
 export MODBUS_PORT=$(opt 'modbus_port')
@@ -24,8 +24,8 @@ export MQTT_TOPIC=$(opt 'mqtt_topic')
 MQTT_HOST_OPT=$(opt 'mqtt_host')
 MQTT_PORT_OPT=$(opt 'mqtt_port')
 MQTT_PROTOCOL_OPT=$(opt 'mqtt_protocol')
-MQTT_USERNAME_OPT="$(opt mqtt_username)"
-MQTT_PASSWORD_OPT="$(opt mqtt_password)"
+MQTT_USERNAME_OPT=$(opt 'mqtt_username')
+MQTT_PASSWORD_OPT=$(opt 'mqtt_password')
 
 if [ -n "${MQTT_HOST_OPT}" ]; then
   export MQTT_HOST="${MQTT_HOST_OPT}"
@@ -33,14 +33,14 @@ if [ -n "${MQTT_HOST_OPT}" ]; then
   export MQTT_PROTOCOL="${MQTT_PROTOCOL_OPT}"
   export MQTT_USERNAME="${MQTT_USERNAME_OPT}"
   export MQTT_PASSWORD="${MQTT_PASSWORD_OPT}"
-  bashio::log.info "Using explicit MQTT broker: ${MQTT_URL}"
+  bashio::log.info "Using explicit MQTT broker: ${MQTT_HOST}:${MQTT_PORT}"
 elif bashio::services.available "mqtt"; then
   MQTT_HOST="$(bashio::services mqtt 'host')"
   MQTT_PORT="$(bashio::services mqtt 'port')"
   MQTT_PROTOCOL="$(bashio::services mqtt 'protocol')"
   export MQTT_USERNAME="$(bashio::services mqtt 'username')"
   export MQTT_PASSWORD="$(bashio::services mqtt 'password')"
-  bashio::log.info "Using HA-provided MQTT broker: ${MQTT_URL}"
+  bashio::log.info "Using HA-provided MQTT broker: ${MQTT_HOST}:${MQTT_PORT}"
 else
   bashio::log.warning "No MQTT broker configured."
   export MQTT_HOST=""

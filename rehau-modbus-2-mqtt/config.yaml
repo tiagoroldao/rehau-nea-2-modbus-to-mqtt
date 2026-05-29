@@ -1,6 +1,6 @@
 name: "REHAU NEA Smart 2.0 Modbus to MQTT"
 description: "Bridges a REHAU NEA Smart 2.0 heating system (Modbus TCP slave) with MQTT for Home Assistant integration."
-version: "0.0.13"
+version: "0.0.14"
 slug: "rehau_nea2_modbus_mqtt"
 init: false
 arch:
