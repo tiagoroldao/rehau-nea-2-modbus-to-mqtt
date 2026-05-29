@@ -4,7 +4,7 @@ export default defineConfig({
   entry: ["src/main.ts"],
   format: ["esm"],
   target: "node22",
-  outDir: "rehau-modbus-2-mqtt/dist",
+  outDir: "ha-rehau-modbus-2-mqtt/dist",
   clean: true,
   sourcemap: true,
   splitting: false,

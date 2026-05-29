@@ -30,6 +30,15 @@ logger.info("configuration: %o", parsed);
 // src/RehauData.ts
 var EMPTY_TEMP_VALUE = 0;
 var EMPTY_HUMIDITY_VALUE = 0;
+var RehauGlobalOperationMode = /* @__PURE__ */ ((RehauGlobalOperationMode2) => {
+  RehauGlobalOperationMode2[RehauGlobalOperationMode2["Null"] = 10] = "Null";
+  RehauGlobalOperationMode2[RehauGlobalOperationMode2["Auto"] = 1] = "Auto";
+  RehauGlobalOperationMode2[RehauGlobalOperationMode2["Heating"] = 2] = "Heating";
+  RehauGlobalOperationMode2[RehauGlobalOperationMode2["Cooling"] = 3] = "Cooling";
+  RehauGlobalOperationMode2[RehauGlobalOperationMode2["ManualHeating"] = 4] = "ManualHeating";
+  RehauGlobalOperationMode2[RehauGlobalOperationMode2["ManualCooling"] = 5] = "ManualCooling";
+  return RehauGlobalOperationMode2;
+})(RehauGlobalOperationMode || {});
 var RehauOperationStatus = /* @__PURE__ */ ((RehauOperationStatus2) => {
   RehauOperationStatus2[RehauOperationStatus2["Null"] = 10] = "Null";
   RehauOperationStatus2[RehauOperationStatus2["Normal"] = 1] = "Normal";
@@ -109,6 +118,7 @@ function setRegister(data, addr, value) {
   let fieldUpdate;
   switch (offset) {
     case ROOM_OFFSET_STATUS:
+      logger.debug(`ModbusTCP - room nr. ${room.id} status update: ${RehauOperationStatus[room.mode]}`);
       room.mode = value;
       fieldUpdate = { kind: "mode", roomId };
       break;
@@ -117,14 +127,17 @@ function setRegister(data, addr, value) {
       if (setpoint > MAX_SETPOINT_CELCIUS || setpoint < MIN_SETPOINT_CELCIUS) {
         setpoint = 0;
       }
+      logger.debug(`ModbusTCP - room nr. ${room.id} setpoint update: ${setpoint} as ${value}`);
       room.setpoint = setpoint;
       fieldUpdate = { kind: "setpoint", roomId };
       break;
     case ROOM_OFFSET_TEMPERATURE:
+      logger.debug(`ModbusTCP - room nr. ${room.id} temperature update: ${dptValueToDecimal(value)} as ${value}`);
       room.temperature = dptValueToDecimal(value);
       fieldUpdate = { kind: "temperature", roomId };
       break;
     case ROOM_OFFSET_HUMIDITY:
+      logger.debug(`ModbusTCP - room nr. ${room.id} humidity update: ${value}%`);
       room.humidity = value;
       fieldUpdate = { kind: "humidity", roomId };
       break;
@@ -138,13 +151,14 @@ function startModbusServer(connection2, host, port, onRoomUpdate2) {
   const vector = {
     getHoldingRegister(addr, unitID) {
       if (unitID !== modbusAddress) return 0;
-      if (addr === REG_GLOBAL_OPERATION_MODE) return data.globalMode;
-      if (addr === REG_GLOBAL_OPERATION_STATUS)
+      if (addr === REG_GLOBAL_OPERATION_MODE) {
+        logger.debug(`ModbusTCP - responding with global operation mode: ${RehauGlobalOperationMode[data.globalMode]}`);
+        return data.globalMode;
+      }
+      if (addr === REG_GLOBAL_OPERATION_STATUS) {
+        logger.debug(`ModbusTCP - responding with global operation status: ${RehauOperationStatus[data.globalOperationStatus]}`);
         return data.globalOperationStatus;
-      if (addr === REG_OUTSIDE_TEMPERATURE)
-        return decimalToDpt(data.outsideTemperature);
-      if (addr === REG_OUTSIDE_TEMP_FILTERED)
-        return decimalToDpt(data.outsideTemperatureFiltered);
+      }
       if (addr < ROOM_BASE) return;
       const roomId = Math.floor(addr / ROOM_BASE);
       const offset = addr % ROOM_BASE;
@@ -152,15 +166,13 @@ function startModbusServer(connection2, host, port, onRoomUpdate2) {
       if (!room) return;
       switch (offset) {
         case ROOM_OFFSET_STATUS:
+          logger.debug(`ModbusTCP - responding with room nr. ${room.id} operation status: ${RehauOperationStatus[room.mode]}`);
           return room.mode;
         case ROOM_OFFSET_SETPOINT:
+          logger.debug(`ModbusTCP - responding with room nr. ${room.id} setpoint: ${room.setpoint} as ${decimalToDpt(room.setpoint)}`);
           return decimalToDpt(room.setpoint);
-        case ROOM_OFFSET_TEMPERATURE:
-          return decimalToDpt(room.temperature);
-        case ROOM_OFFSET_HUMIDITY:
-          return room.humidity;
         default:
-          return 0;
+          return;
       }
     },
     setRegisterArray(addr, value, unitID) {

@@ -2,6 +2,8 @@ import { type IServiceVector, ServerTCP } from "modbus-serial";
 import {
   type RehauConnection,
   type RehauData,
+  RehauGlobalOperationMode,
+  RehauOperationStatus,
   type RoomUpdate,
   createDefaultRoom,
 } from "./RehauData";
@@ -56,6 +58,7 @@ export function setRegister(
   let fieldUpdate: RoomUpdate;
   switch (offset) {
     case ROOM_OFFSET_STATUS:
+      logger.debug(`ModbusTCP - room nr. ${room.id} status update: ${RehauOperationStatus[room.mode]}`);
       room.mode = value;
       fieldUpdate = { kind: "mode", roomId };
       break;
@@ -64,14 +67,17 @@ export function setRegister(
       if (setpoint > MAX_SETPOINT_CELCIUS || setpoint < MIN_SETPOINT_CELCIUS) {
         setpoint = 0;
       }
+      logger.debug(`ModbusTCP - room nr. ${room.id} setpoint update: ${setpoint} as ${value}`);
       room.setpoint = setpoint;
       fieldUpdate = { kind: "setpoint", roomId };
       break;
     case ROOM_OFFSET_TEMPERATURE:
+      logger.debug(`ModbusTCP - room nr. ${room.id} temperature update: ${dptValueToDecimal(value)} as ${value}`);
       room.temperature = dptValueToDecimal(value);
       fieldUpdate = { kind: "temperature", roomId };
       break;
     case ROOM_OFFSET_HUMIDITY:
+      logger.debug(`ModbusTCP - room nr. ${room.id} humidity update: ${value}%`);
       room.humidity = value;
       fieldUpdate = { kind: "humidity", roomId };
       break;
@@ -93,13 +99,14 @@ export function startModbusServer(
     getHoldingRegister(addr: number, unitID: number) {
       if (unitID !== modbusAddress) return 0;
 
-      if (addr === REG_GLOBAL_OPERATION_MODE) return data.globalMode;
-      if (addr === REG_GLOBAL_OPERATION_STATUS)
+      if (addr === REG_GLOBAL_OPERATION_MODE) {
+        logger.debug(`ModbusTCP - responding with global operation mode: ${RehauGlobalOperationMode[data.globalMode]}`);
+        return data.globalMode;
+      }
+      if (addr === REG_GLOBAL_OPERATION_STATUS){
+        logger.debug(`ModbusTCP - responding with global operation status: ${RehauOperationStatus[data.globalOperationStatus]}`);
         return data.globalOperationStatus;
-      if (addr === REG_OUTSIDE_TEMPERATURE)
-        return decimalToDpt(data.outsideTemperature);
-      if (addr === REG_OUTSIDE_TEMP_FILTERED)
-        return decimalToDpt(data.outsideTemperatureFiltered);
+      }
       if (addr < ROOM_BASE) return;
 
       const roomId = Math.floor(addr / ROOM_BASE);
@@ -110,15 +117,13 @@ export function startModbusServer(
 
       switch (offset) {
         case ROOM_OFFSET_STATUS:
+          logger.debug(`ModbusTCP - responding with room nr. ${room.id} operation status: ${RehauOperationStatus[room.mode]}`);
           return room.mode;
-        case ROOM_OFFSET_SETPOINT:
+          case ROOM_OFFSET_SETPOINT:
+          logger.debug(`ModbusTCP - responding with room nr. ${room.id} setpoint: ${room.setpoint} as ${decimalToDpt(room.setpoint)}`);
           return decimalToDpt(room.setpoint);
-        case ROOM_OFFSET_TEMPERATURE:
-          return decimalToDpt(room.temperature);
-        case ROOM_OFFSET_HUMIDITY:
-          return room.humidity;
         default:
-          return 0;
+          return;
       }
     },
 
