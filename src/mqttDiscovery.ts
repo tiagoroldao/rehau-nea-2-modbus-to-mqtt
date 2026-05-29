@@ -82,7 +82,7 @@ export function createRoomMqttConfig(
       identifiers: [connection.mqttPrefix],
       manufacturer: "REHAU",
       model: "NEA SMART 2.0",
-      name: `REHAU Room ${room.id}`,
+      name: `REHAU Nea Smart Climate (${connection.mqttPrefix})`,
     },
     origin: {
       name: 'REHAU Modbus-to-MQTT'
