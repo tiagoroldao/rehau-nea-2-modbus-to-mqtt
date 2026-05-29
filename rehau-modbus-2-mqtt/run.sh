@@ -39,6 +39,13 @@ elif bashio::services.available "mqtt"; then
   export MQTT_USERNAME="$(bashio::services mqtt 'username')"
   export MQTT_PASSWORD="$(bashio::services mqtt 'password')"
   bashio::log.info "Using HA-provided MQTT broker: ${MQTT_URL}"
+else
+  bashio::log.warning "No MQTT broker configured."
+  export MQTT_HOST=""
+  export MQTT_PORT=""
+  export MQTT_PROTOCOL=""
+  export MQTT_USERNAME=""
+  export MQTT_PASSWORD=""
 fi
 
 cd /app

@@ -1,6 +1,6 @@
 name: "REHAU NEA Smart 2.0 Modbus to MQTT"
 description: "Bridges a REHAU NEA Smart 2.0 heating system (Modbus TCP slave) with MQTT for Home Assistant integration."
-version: "0.0.11"
+version: "0.0.12"
 slug: "rehau_nea2_modbus_mqtt"
 init: false
 arch:
@@ -10,6 +10,10 @@ arch:
   - armv7
 startup: services
 boot: auto
+
+# HA injects MQTT credentials from the configured broker when present.
+services:
+  - mqtt:need
 
 ports:
   502/tcp: 502
