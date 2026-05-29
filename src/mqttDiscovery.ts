@@ -1,6 +1,6 @@
 import { mqttTopic } from "./config";
 import { MAX_SETPOINT_CELCIUS, MIN_SETPOINT_CELCIUS } from "./modbusConstants";
-import { RehauConnection, RehauRoom } from "./RehauData";
+import { type RehauConnection, type RehauRoom } from "./RehauData";
 
 export const TOPIC_CURRENT_TEMPERATURE  = "current_temperature";
 export const TOPIC_TARGET_TEMPERATURE   = "target_temperature";
@@ -25,7 +25,12 @@ export interface RoomMqttConfig {
     identifiers: string[];
     manufacturer: string;
     model: string;
+    name: string;
   };
+  origin: {
+    name: string;
+  };
+  default_entity_id: string;
   current_temperature_topic: string;
   temperature_state_topic: string;
   temperature_command_topic: string;
@@ -71,11 +76,16 @@ export function createRoomMqttConfig(
   return {
     name: `Room ${room.id}`,
     unique_id: entityId,
+    default_entity_id: `climate.entityId`,
     object_id: entityId,
     device: {
       identifiers: [connection.mqttPrefix],
       manufacturer: "REHAU",
       model: "NEA SMART 2.0",
+      name: `REHAU Room ${room.id}`,
+    },
+    origin: {
+      name: 'REHAU Modbus-to-MQTT'
     },
     current_temperature_topic: `${baseTopic}/${TOPIC_CURRENT_TEMPERATURE}`,
     temperature_state_topic:   `${baseTopic}/${TOPIC_TARGET_TEMPERATURE}`,

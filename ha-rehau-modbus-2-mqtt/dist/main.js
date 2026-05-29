@@ -226,11 +226,16 @@ function createRoomMqttConfig(room, connection2) {
   return {
     name: `Room ${room.id}`,
     unique_id: entityId,
+    default_entity_id: `climate.entityId`,
     object_id: entityId,
     device: {
       identifiers: [connection2.mqttPrefix],
       manufacturer: "REHAU",
-      model: "NEA SMART 2.0"
+      model: "NEA SMART 2.0",
+      name: `REHAU Room ${room.id}`
+    },
+    origin: {
+      name: "REHAU Modbus-to-MQTT"
     },
     current_temperature_topic: `${baseTopic}/${TOPIC_CURRENT_TEMPERATURE}`,
     temperature_state_topic: `${baseTopic}/${TOPIC_TARGET_TEMPERATURE}`,
