@@ -9,8 +9,8 @@ var configSchema = z.object({
   MQTT_PROTOCOL: z.enum(["mqtt", "mqtts", "ws", "wss"]).default("mqtt"),
   MQTT_USERNAME: z.string().default(""),
   MQTT_PASSWORD: z.string().default(""),
-  MQTT_ENTITY_PREFIX: z.string().default("rehau"),
-  MQTT_TOPIC: z.string().default("homeassistant/climate")
+  INSTALLATION_NAME: z.string().default("home-climate"),
+  MQTT_TOPIC: z.string().default("homeassistant")
 });
 var parsed = configSchema.parse(process.env);
 var modbusHost = "0.0.0.0";
@@ -22,7 +22,7 @@ var mqttPort = parsed.MQTT_PORT;
 var mqttProtocol = parsed.MQTT_PROTOCOL;
 var mqttUsername = parsed.MQTT_USERNAME;
 var mqttPassword = parsed.MQTT_PASSWORD;
-var mqttEntityPrefix = parsed.MQTT_ENTITY_PREFIX;
+var installationName = parsed.INSTALLATION_NAME;
 var mqttTopic = parsed.MQTT_TOPIC;
 var logger = pino({ level: logLevel, transport: { target: "pino-pretty" } });
 logger.info("configuration: %o", parsed);
@@ -49,6 +49,9 @@ var RehauOperationStatus = /* @__PURE__ */ ((RehauOperationStatus2) => {
   RehauOperationStatus2[RehauOperationStatus2["HolidayAbsence"] = 6] = "HolidayAbsence";
   return RehauOperationStatus2;
 })(RehauOperationStatus || {});
+function isSystemCooling(data) {
+  return data.globalMode === 3 /* Cooling */ || data.globalMode === 5 /* ManualCooling */;
+}
 function createDefaultRoom(id) {
   return { id, mode: 10 /* Null */, setpoint: EMPTY_TEMP_VALUE, temperature: EMPTY_TEMP_VALUE, humidity: EMPTY_HUMIDITY_VALUE };
 }
@@ -197,6 +200,7 @@ function startModbusServer(connection2, host, port, onRoomUpdate2) {
 import mqtt from "mqtt";
 
 // src/mqttDiscovery.ts
+var TOPIC_STATE = "state";
 var TOPIC_CURRENT_TEMPERATURE = "current_temperature";
 var TOPIC_TARGET_TEMPERATURE = "target_temperature";
 var TOPIC_TEMPERATURE_COMMAND = "temperature_command";
@@ -207,11 +211,11 @@ var TOPIC_PRESET = "preset";
 var TOPIC_PRESET_COMMAND = "preset_command";
 var TOPIC_AVAILABILITY = "availability";
 var TOPIC_CONFIG = "config";
-function getRoomBaseTopic(room, connection2) {
-  return `${mqttTopic}/${connection2.mqttPrefix}_room_${room.id}`;
+function getRoomTopic(roomId, connection2, type = "climate") {
+  return `${mqttTopic}/${type === "climate" ? "climate" : "sensor"}/${connection2.installationSlug}_room_${roomId}_${type}`;
 }
 function parseRoomTopic(topic, connection2) {
-  const prefix = `${mqttTopic}/${connection2.mqttPrefix}_room_`;
+  const prefix = getRoomTopic("", connection2);
   if (!topic.startsWith(prefix)) return null;
   const rest = topic.slice(prefix.length);
   const slashIdx = rest.indexOf("/");
@@ -220,20 +224,23 @@ function parseRoomTopic(topic, connection2) {
   if (isNaN(roomId)) return null;
   return { roomId, subtopic: rest.slice(slashIdx + 1) };
 }
+function deviceData(connection2) {
+  return {
+    identifiers: [connection2.installationSlug],
+    manufacturer: "REHAU",
+    model: "Nea Smart 2.0",
+    name: connection2.installationName
+  };
+}
 function createRoomMqttConfig(room, connection2) {
-  const entityId = `${connection2.mqttPrefix}_room_${room.id}`;
-  const baseTopic = getRoomBaseTopic(room, connection2);
+  const entityId = `${connection2.installationSlug}_room_${room.id}`;
+  const baseTopic = getRoomTopic(room.id, connection2);
   return {
     name: `Room ${room.id}`,
     unique_id: entityId,
-    default_entity_id: `climate.entityId`,
+    default_entity_id: `climate.${entityId}}`,
     object_id: entityId,
-    device: {
-      identifiers: [connection2.mqttPrefix],
-      manufacturer: "REHAU",
-      model: "NEA SMART 2.0",
-      name: `REHAU Nea Smart Climate (${connection2.mqttPrefix})`
-    },
+    device: deviceData(connection2),
     origin: {
       name: "REHAU Modbus-to-MQTT"
     },
@@ -243,7 +250,7 @@ function createRoomMqttConfig(room, connection2) {
     current_humidity_topic: `${baseTopic}/${TOPIC_CURRENT_HUMIDITY}`,
     mode_state_topic: `${baseTopic}/${TOPIC_MODE}`,
     mode_command_topic: `${baseTopic}/${TOPIC_MODE_COMMAND}`,
-    modes: ["off", "auto", "heat"],
+    modes: ["off", isSystemCooling(connection2.data) ? "cool" : "heat"],
     preset_mode_state_topic: `${baseTopic}/${TOPIC_PRESET}`,
     preset_mode_command_topic: `${baseTopic}/${TOPIC_PRESET_COMMAND}`,
     preset_modes: [
@@ -265,6 +272,44 @@ function createRoomMqttConfig(room, connection2) {
     optimistic: true
   };
 }
+function createRoomTempSensorMqttConfig(room, connection2) {
+  const entityId = `${connection2.installationName}_room_${room.id}_temperature`;
+  const baseTopic = getRoomTopic(room.id, connection2, "temperature");
+  const baseRoomTopic = getRoomTopic(room.id, connection2);
+  return {
+    name: `Room ${room.id} Temperature`,
+    unique_id: entityId,
+    default_entity_id: `sensor.${entityId}}`,
+    state_topic: `${baseTopic}/${TOPIC_STATE}`,
+    object_id: entityId,
+    device: deviceData(connection2),
+    availability_topic: `${baseRoomTopic}/${TOPIC_AVAILABILITY}`,
+    payload_available: "online",
+    payload_not_available: "offline",
+    unit_of_measurement: "\xB0C",
+    device_class: "temperature",
+    state_class: "measurement"
+  };
+}
+function createRoomHumiditySensorMqttConfig(room, connection2) {
+  const entityId = `${connection2.installationName}_room_${room.id}_humidity`;
+  const baseTopic = getRoomTopic(room.id, connection2, "humidity");
+  const baseRoomTopic = getRoomTopic(room.id, connection2);
+  return {
+    name: `Room ${room.id} Humidity`,
+    unique_id: entityId,
+    default_entity_id: `sensor.${entityId}}`,
+    state_topic: `${baseTopic}/${TOPIC_STATE}`,
+    object_id: entityId,
+    device: deviceData(connection2),
+    availability_topic: `${baseRoomTopic}/${TOPIC_AVAILABILITY}`,
+    payload_available: "online",
+    payload_not_available: "offline",
+    state_class: "measurement",
+    unit_of_measurement: "%",
+    device_class: "humidity"
+  };
+}
 
 // src/MqttClient.ts
 function roomModeToHaMode(mode) {
@@ -281,12 +326,20 @@ function roomModeToHaMode(mode) {
 function publishRoom(client, update, connection2) {
   const room = connection2.data.rooms.find((r) => r.id === update.roomId);
   if (!room) return;
-  const base = getRoomBaseTopic(room, connection2);
+  const base = getRoomTopic(room.id, connection2);
   switch (update.kind) {
     case "created":
       const info = JSON.stringify(createRoomMqttConfig(room, connection2));
       logger.debug("Publishing MQTT room info for room %s: %o", room.id, info);
       client.publish(`${base}/${TOPIC_CONFIG}`, info, { retain: true });
+      client.publish(
+        `${getRoomTopic(room.id, connection2, "temperature")}/${TOPIC_CONFIG}`,
+        JSON.stringify(createRoomTempSensorMqttConfig(room, connection2))
+      );
+      client.publish(
+        `${getRoomTopic(room.id, connection2, "humidity")}/${TOPIC_CONFIG}`,
+        JSON.stringify(createRoomHumiditySensorMqttConfig(room, connection2))
+      );
       client.publish(`${base}/${TOPIC_AVAILABILITY}`, "online", {
         retain: true
       });
@@ -297,6 +350,10 @@ function publishRoom(client, update, connection2) {
           "Publishing MQTT room temperature for room %s: %s",
           room.id,
           room.temperature
+        );
+        client.publish(
+          `${getRoomTopic(room.id, connection2, "temperature")}/${TOPIC_STATE}`,
+          room.temperature.toFixed(1)
         );
         client.publish(
           `${base}/${TOPIC_CURRENT_TEMPERATURE}`,
@@ -322,7 +379,11 @@ function publishRoom(client, update, connection2) {
         logger.debug(
           "Publishing MQTT room humidity for room %s: %s",
           room.id,
-          room.temperature
+          room.humidity
+        );
+        client.publish(
+          `${getRoomTopic(room.id, connection2, "humidity")}/${TOPIC_STATE}`,
+          room.humidity.toFixed(1)
         );
         client.publish(
           `${base}/${TOPIC_CURRENT_HUMIDITY}`,
@@ -357,7 +418,7 @@ function startMqttClient(connection2) {
   const client = mqtt.connect(opts);
   client.on("connect", () => {
     logger.info("MQTT connected");
-    client.subscribe(`${mqttTopic}/#`, (err) => {
+    client.subscribe(`${mqttTopic}/climate/#`, (err) => {
       if (err) logger.error("MQTT subscribe error: %s", err.message);
     });
   });
@@ -367,7 +428,7 @@ function startMqttClient(connection2) {
     const { roomId, subtopic } = parsed2;
     const room = connection2.data.rooms.find((r) => r.id === roomId);
     if (!room) {
-      const base = getRoomBaseTopic({ id: roomId }, connection2);
+      const base = getRoomTopic(roomId, connection2);
       client.publish(`${base}/${TOPIC_AVAILABILITY}`, "offline", {
         retain: true
       });
@@ -411,8 +472,10 @@ function startMqttClient(connection2) {
 }
 
 // src/main.ts
+var slugify = (s) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "default";
 var connection = {
-  mqttPrefix: mqttEntityPrefix,
+  installationName,
+  installationSlug: slugify(installationName),
   modbusAddress: unitNumber,
   data: createDefaultData()
 };
@@ -426,4 +489,7 @@ process.on("SIGTERM", () => {
   stopModbus();
   stopMqtt();
 });
+export {
+  slugify
+};
 //# sourceMappingURL=main.js.map

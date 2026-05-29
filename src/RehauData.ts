@@ -25,6 +25,10 @@ export enum RehauOperationStatus {
     HolidayAbsence = 6,
 }
 
+export function isSystemCooling(data: RehauData) {
+    return data.globalMode === RehauGlobalOperationMode.Cooling || data.globalMode === RehauGlobalOperationMode.ManualCooling;
+}
+
 
 export function createDefaultRoom(id: number): RehauRoom {
     return { id, mode: RehauOperationStatus.Null, setpoint: EMPTY_TEMP_VALUE, temperature: EMPTY_TEMP_VALUE, humidity: EMPTY_HUMIDITY_VALUE };
@@ -64,7 +68,8 @@ export function createDefaultData(): RehauData {
 }
 
 export interface RehauConnection {
-    mqttPrefix: string;
+    installationName: string;
+    installationSlug: string;
     modbusAddress: number;
     data: RehauData;
 }

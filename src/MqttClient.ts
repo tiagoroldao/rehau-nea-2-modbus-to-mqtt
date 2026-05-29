@@ -28,8 +28,11 @@ import {
   TOPIC_AVAILABILITY,
   TOPIC_CONFIG,
   parseRoomTopic,
-  getRoomBaseTopic,
+  getRoomTopic,
   createRoomMqttConfig,
+  TOPIC_STATE,
+  createRoomHumiditySensorMqttConfig,
+  createRoomTempSensorMqttConfig,
 } from "./mqttDiscovery";
 
 function roomModeToHaMode(mode: RehauOperationStatus): string {
@@ -52,13 +55,21 @@ function publishRoom(
   const room = connection.data.rooms.find((r) => r.id === update.roomId);
   if (!room) return;
 
-  const base = getRoomBaseTopic(room, connection);
+  const base = getRoomTopic(room.id, connection);
 
   switch (update.kind) {
     case "created":
       const info = JSON.stringify(createRoomMqttConfig(room, connection));
       logger.debug("Publishing MQTT room info for room %s: %o", room.id, info);
       client.publish(`${base}/${TOPIC_CONFIG}`, info, { retain: true });
+      client.publish(
+        `${getRoomTopic(room.id, connection, "temperature")}/${TOPIC_CONFIG}`,
+        JSON.stringify(createRoomTempSensorMqttConfig(room, connection)),
+      );
+      client.publish(
+        `${getRoomTopic(room.id, connection, "humidity")}/${TOPIC_CONFIG}`,
+        JSON.stringify(createRoomHumiditySensorMqttConfig(room, connection)),
+      );
       client.publish(`${base}/${TOPIC_AVAILABILITY}`, "online", {
         retain: true,
       });
@@ -69,6 +80,10 @@ function publishRoom(
           "Publishing MQTT room temperature for room %s: %s",
           room.id,
           room.temperature,
+        );
+        client.publish(
+          `${getRoomTopic(room.id, connection, "temperature")}/${TOPIC_STATE}`,
+          room.temperature.toFixed(1),
         );
         client.publish(
           `${base}/${TOPIC_CURRENT_TEMPERATURE}`,
@@ -94,7 +109,11 @@ function publishRoom(
         logger.debug(
           "Publishing MQTT room humidity for room %s: %s",
           room.id,
-          room.temperature,
+          room.humidity,
+        );
+        client.publish(
+          `${getRoomTopic(room.id, connection, "humidity")}/${TOPIC_STATE}`,
+          room.humidity.toFixed(1),
         );
         client.publish(
           `${base}/${TOPIC_CURRENT_HUMIDITY}`,
@@ -135,7 +154,7 @@ export function startMqttClient(connection: RehauConnection): {
 
   client.on("connect", () => {
     logger.info("MQTT connected");
-    client.subscribe(`${mqttTopic}/#`, (err) => {
+    client.subscribe(`${mqttTopic}/climate/#`, (err) => {
       if (err) logger.error("MQTT subscribe error: %s", err.message);
     });
   });
@@ -146,7 +165,7 @@ export function startMqttClient(connection: RehauConnection): {
     const { roomId, subtopic } = parsed;
     const room = connection.data.rooms.find((r: RehauRoom) => r.id === roomId);
     if (!room) {
-      const base = getRoomBaseTopic({ id: roomId }, connection);
+      const base = getRoomTopic(roomId, connection);
       client.publish(`${base}/${TOPIC_AVAILABILITY}`, "offline", {
         retain: true,
       });

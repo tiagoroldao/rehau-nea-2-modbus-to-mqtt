@@ -10,7 +10,7 @@ export MODBUS_HOST=$(opt 'modbus_host')
 export MODBUS_PORT=$(opt 'modbus_port')
 export MODBUS_UNIT_ID=$(opt 'modbus_unit_id')
 
-export MQTT_ENTITY_PREFIX=$(opt 'mqtt_entity_prefix')
+export INSTALLATION_NAME=$(opt 'installation_name')
 export MQTT_TOPIC=$(opt 'mqtt_topic')
 
 

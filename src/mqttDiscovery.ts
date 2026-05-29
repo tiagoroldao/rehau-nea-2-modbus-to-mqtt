@@ -1,100 +1,82 @@
 import { mqttTopic } from "./config";
 import { MAX_SETPOINT_CELCIUS, MIN_SETPOINT_CELCIUS } from "./modbusConstants";
-import { type RehauConnection, type RehauRoom } from "./RehauData";
+import {
+  isSystemCooling,
+  type RehauConnection,
+  type RehauRoom,
+} from "./RehauData";
 
-export const TOPIC_CURRENT_TEMPERATURE  = "current_temperature";
-export const TOPIC_TARGET_TEMPERATURE   = "target_temperature";
-export const TOPIC_TEMPERATURE_COMMAND  = "temperature_command";
-export const TOPIC_CURRENT_HUMIDITY     = "current_humidity";
-export const TOPIC_MODE                 = "mode";
-export const TOPIC_MODE_COMMAND         = "mode_command";
-export const TOPIC_PRESET               = "preset";
-export const TOPIC_PRESET_COMMAND       = "preset_command";
-export const TOPIC_AVAILABILITY         = "availability";
-export const TOPIC_CONFIG               = "config";
+export const TOPIC_STATE = "state";
+export const TOPIC_CURRENT_TEMPERATURE = "current_temperature";
+export const TOPIC_TARGET_TEMPERATURE = "target_temperature";
+export const TOPIC_TEMPERATURE_COMMAND = "temperature_command";
+export const TOPIC_CURRENT_HUMIDITY = "current_humidity";
+export const TOPIC_MODE = "mode";
+export const TOPIC_MODE_COMMAND = "mode_command";
+export const TOPIC_PRESET = "preset";
+export const TOPIC_PRESET_COMMAND = "preset_command";
+export const TOPIC_AVAILABILITY = "availability";
+export const TOPIC_CONFIG = "config";
 
-export function getRoomBaseTopic(room: Pick<RehauRoom, 'id'>, connection: Pick<RehauConnection, 'mqttPrefix'>): string {
-    return `${mqttTopic}/${connection.mqttPrefix}_room_${room.id}`;
+export function getRoomTopic(
+  roomId: number | string,
+  connection: Pick<RehauConnection, "installationSlug">,
+  type: "climate" | "temperature" | "humidity" = "climate",
+): string {
+  
+  return `${mqttTopic}/${type === 'climate' ? 'climate' : 'sensor'}/${connection.installationSlug}_room_${roomId}_${type}`;
 }
 
-export interface RoomMqttConfig {
-  name: string;
-  unique_id: string;
-  object_id: string;
-  device: {
-    identifiers: string[];
-    manufacturer: string;
-    model: string;
-    name: string;
-  };
-  origin: {
-    name: string;
-  };
-  default_entity_id: string;
-  current_temperature_topic: string;
-  temperature_state_topic: string;
-  temperature_command_topic: string;
-  current_humidity_topic: string;
-  mode_state_topic: string;
-  mode_command_topic: string;
-  modes: string[];
-  preset_mode_state_topic: string;
-  preset_mode_command_topic: string;
-  preset_modes: string[];
-  availability_topic: string;
-  payload_available: "online";
-  payload_not_available: "offline";
-  temperature_unit: "C" | "F";
-  temp_step: number;
-  min_temp: number;
-  max_temp: number;
-  precision: number;
-  optimistic: boolean;
+export function parseRoomTopic(
+  topic: string,
+  connection: RehauConnection,
+): { roomId: number; subtopic: string } | null {
+  const prefix = getRoomTopic("", connection);
+  if (!topic.startsWith(prefix)) return null;
+
+  const rest = topic.slice(prefix.length);
+  const slashIdx = rest.indexOf("/");
+  if (slashIdx === -1) return null;
+
+  const roomId = parseInt(rest.slice(0, slashIdx), 10);
+  if (isNaN(roomId)) return null;
+
+  return { roomId, subtopic: rest.slice(slashIdx + 1) };
 }
 
-export function parseRoomTopic(topic: string, connection: RehauConnection): { roomId: number; subtopic: string } | null {
-    const prefix = `${mqttTopic}/${connection.mqttPrefix}_room_`;
-    if (!topic.startsWith(prefix)) return null;
-
-    const rest = topic.slice(prefix.length);
-    const slashIdx = rest.indexOf("/");
-    if (slashIdx === -1) return null;
-
-    const roomId = parseInt(rest.slice(0, slashIdx), 10);
-    if (isNaN(roomId)) return null;
-
-    return { roomId, subtopic: rest.slice(slashIdx + 1) };
+function deviceData(connection: RehauConnection) {
+  return {
+    identifiers: [connection.installationSlug],
+    manufacturer: "REHAU",
+    model: "Nea Smart 2.0",
+    name: connection.installationName,
+  };
 }
 
 export function createRoomMqttConfig(
   room: RehauRoom,
   connection: RehauConnection,
-): RoomMqttConfig {
-  const entityId = `${connection.mqttPrefix}_room_${room.id}`;
-  const baseTopic = getRoomBaseTopic(room, connection);
+): Record<string, unknown> {
+  const entityId = `${connection.installationSlug}_room_${room.id}`;
+  const baseTopic = getRoomTopic(room.id, connection);
 
   return {
     name: `Room ${room.id}`,
     unique_id: entityId,
-    default_entity_id: `climate.entityId`,
+    default_entity_id: `climate.${entityId}}`,
     object_id: entityId,
-    device: {
-      identifiers: [connection.mqttPrefix],
-      manufacturer: "REHAU",
-      model: "NEA SMART 2.0",
-      name: `REHAU Nea Smart Climate (${connection.mqttPrefix})`,
-    },
+    device: deviceData(connection),
     origin: {
-      name: 'REHAU Modbus-to-MQTT'
+      name: "REHAU Modbus-to-MQTT",
     },
     current_temperature_topic: `${baseTopic}/${TOPIC_CURRENT_TEMPERATURE}`,
-    temperature_state_topic:   `${baseTopic}/${TOPIC_TARGET_TEMPERATURE}`,
+    temperature_state_topic: `${baseTopic}/${TOPIC_TARGET_TEMPERATURE}`,
     temperature_command_topic: `${baseTopic}/${TOPIC_TEMPERATURE_COMMAND}`,
-    current_humidity_topic:    `${baseTopic}/${TOPIC_CURRENT_HUMIDITY}`,
-    mode_state_topic:          `${baseTopic}/${TOPIC_MODE}`,
-    mode_command_topic:        `${baseTopic}/${TOPIC_MODE_COMMAND}`,
-    modes: ["off", "auto", "heat"],
-    preset_mode_state_topic:   `${baseTopic}/${TOPIC_PRESET}`,
+    current_humidity_topic: `${baseTopic}/${TOPIC_CURRENT_HUMIDITY}`,
+    mode_state_topic: `${baseTopic}/${TOPIC_MODE}`,
+    mode_command_topic: `${baseTopic}/${TOPIC_MODE_COMMAND}`,
+    modes: ["off", isSystemCooling(connection.data) ? "cool" : "heat"],
+    preset_mode_state_topic: `${baseTopic}/${TOPIC_PRESET}`,
     preset_mode_command_topic: `${baseTopic}/${TOPIC_PRESET_COMMAND}`,
     preset_modes: [
       "Normal",
@@ -104,7 +86,7 @@ export function createRoomMqttConfig(
       "Party",
       "HolidayAbsence",
     ],
-    availability_topic:        `${baseTopic}/${TOPIC_AVAILABILITY}`,
+    availability_topic: `${baseTopic}/${TOPIC_AVAILABILITY}`,
     payload_available: "online",
     payload_not_available: "offline",
     temperature_unit: "C",
@@ -113,5 +95,53 @@ export function createRoomMqttConfig(
     max_temp: MAX_SETPOINT_CELCIUS,
     precision: 0.1,
     optimistic: true,
+  };
+}
+
+export function createRoomTempSensorMqttConfig(
+  room: RehauRoom,
+  connection: RehauConnection,
+): Record<string, unknown> {
+  const entityId = `${connection.installationName}_room_${room.id}_temperature`;
+  const baseTopic = getRoomTopic(room.id, connection, "temperature");
+  const baseRoomTopic = getRoomTopic(room.id, connection);
+
+  return {
+    name: `Room ${room.id} Temperature`,
+    unique_id: entityId,
+    default_entity_id: `sensor.${entityId}}`,
+    state_topic: `${baseTopic}/${TOPIC_STATE}`,
+    object_id: entityId,
+    device: deviceData(connection),
+    availability_topic: `${baseRoomTopic}/${TOPIC_AVAILABILITY}`,
+    payload_available: "online",
+    payload_not_available: "offline",
+    unit_of_measurement: "°C",
+    device_class: "temperature",
+    state_class: "measurement",
+  };
+}
+
+export function createRoomHumiditySensorMqttConfig(
+  room: RehauRoom,
+  connection: RehauConnection,
+): Record<string, unknown> {
+  const entityId = `${connection.installationName}_room_${room.id}_humidity`;
+  const baseTopic = getRoomTopic(room.id, connection, "humidity");
+  const baseRoomTopic = getRoomTopic(room.id, connection);
+
+  return {
+    name: `Room ${room.id} Humidity`,
+    unique_id: entityId,
+    default_entity_id: `sensor.${entityId}}`,
+    state_topic: `${baseTopic}/${TOPIC_STATE}`,
+    object_id: entityId,
+    device: deviceData(connection),
+    availability_topic: `${baseRoomTopic}/${TOPIC_AVAILABILITY}`,
+    payload_available: "online",
+    payload_not_available: "offline",
+    state_class: "measurement",
+    unit_of_measurement: "%",
+    device_class: "humidity",
   };
 }

@@ -1,10 +1,23 @@
-import { modbusHost, modbusPort, mqttEntityPrefix, unitNumber } from "./config";
-import { RehauConnection, createDefaultData } from "./RehauData";
+import { modbusHost, modbusPort, installationName, unitNumber } from "./config";
+import { type RehauConnection, createDefaultData } from "./RehauData";
 import { startModbusServer } from "./ModbusServer";
 import { startMqttClient } from "./MqttClient";
 
+/**
+ * Lowercased ASCII slug — strips accents, collapses non-alphanum to `-`.
+ * "Casa Bertini" → "casa-bertini", "Ufficio 2°" → "ufficio-2".
+ */
+export const slugify = (s: string): string =>
+  s
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "default";
+
 const connection: RehauConnection = {
-    mqttPrefix: mqttEntityPrefix,
+    installationName: installationName,
+    installationSlug: slugify(installationName),
     modbusAddress: unitNumber,
     data: createDefaultData(),
 };

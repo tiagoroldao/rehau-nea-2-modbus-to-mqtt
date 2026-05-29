@@ -27,8 +27,8 @@ options:
   mqtt_username: ""
   mqtt_password: ""
   mqtt_reject_unauthorized: false
-  mqtt_entity_prefix: "rehau"
-  mqtt_topic: "homeassistant/climate"
+  installation_name: "rehau"
+  mqtt_topic: "homeassistant"
 
 schema:
   log_level: "list(trace|debug|info|warn|error|fatal)"
@@ -39,5 +39,5 @@ schema:
   mqtt_username: str
   mqtt_password: str
   mqtt_reject_unauthorized: bool
-  mqtt_entity_prefix: str
+  installation_name: str
   mqtt_topic: str

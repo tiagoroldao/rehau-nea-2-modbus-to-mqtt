@@ -43,7 +43,7 @@ REHAU NEA SMART 2.0
 **`src/main.ts`** — entry point. Creates `RehauConnection`, starts both services, wires the `onRoomUpdate` callback from MQTT client to Modbus server, handles `SIGINT`/`SIGTERM`.
 
 **`src/RehauData.ts`** — all shared data types:
-- `RehauConnection` — config (`mqttPrefix`, `modbusAddress`) + live `data`
+- `RehauConnection` — config (`installationName`, `modbusAddress`) + live `data`
 - `RehauData` — live state: global mode/status, outside temperatures, rooms array
 - `RehauRoom` — per-room: `id`, `mode` (RehauOperationStatus), `setpoint`, `temperature`, `humidity`
 - `RoomUpdate` — discriminated union of update events fired by `setRegister`
@@ -70,7 +70,7 @@ REHAU NEA SMART 2.0
 
 ## MQTT topic structure
 
-Entity ID format: `{mqttEntityPrefix}_room_{roomId}` (e.g. `rehau_room_1`)
+Entity ID format: `{installationName}_room_{roomId}` (e.g. `rehau_room_1`)
 Base topic: `{mqttTopic}/{entityId}` (e.g. `homeassistant/climate/rehau_room_1`)
 
 Subtopics: `config`, `availability`, `current_temperature`, `target_temperature`, `temperature_command`, `current_humidity`, `mode`, `mode_command`, `preset`, `preset_command`
