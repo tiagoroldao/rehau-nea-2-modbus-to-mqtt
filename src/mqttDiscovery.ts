@@ -23,8 +23,7 @@ export function getRoomTopic(
   connection: Pick<RehauConnection, "installationSlug">,
   type: "climate" | "temperature" | "humidity" = "climate",
 ): string {
-  
-  return `${mqttTopic}/${type === 'climate' ? 'climate' : 'sensor'}/${connection.installationSlug}_room_${roomId}_${type}`;
+  return `${mqttTopic}/${type === "climate" ? "climate" : "sensor"}/${connection.installationSlug}_room_${roomId}_${type === "climate" ? "" : type}`;
 }
 
 export function parseRoomTopic(
@@ -63,7 +62,7 @@ export function createRoomMqttConfig(
   return {
     name: `Room ${room.id}`,
     unique_id: entityId,
-    default_entity_id: `climate.${entityId}}`,
+    default_entity_id: `climate.${entityId}`,
     object_id: entityId,
     device: deviceData(connection),
     origin: {
