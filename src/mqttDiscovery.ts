@@ -13,6 +13,7 @@ export const TOPIC_TEMPERATURE_COMMAND = "temperature_command";
 export const TOPIC_CURRENT_HUMIDITY = "current_humidity";
 export const TOPIC_MODE = "mode";
 export const TOPIC_MODE_COMMAND = "mode_command";
+export const TOPIC_COMMAND = "command";
 export const TOPIC_PRESET = "preset";
 export const TOPIC_PRESET_COMMAND = "preset_command";
 export const TOPIC_AVAILABILITY = "availability";
@@ -23,7 +24,21 @@ export function getRoomTopic(
   connection: Pick<RehauConnection, "installationSlug">,
   type: "climate" | "temperature" | "humidity" = "climate",
 ): string {
-  return `${mqttTopic}/${type === "climate" ? "climate" : "sensor"}/${connection.installationSlug}_room_${roomId}_${type === "climate" ? "" : type}`;
+  return `${mqttTopic}/${type === "climate" ? "climate" : "sensor"}/${connection.installationSlug}_room_${roomId}${type === "climate" ? "" : `_${type}`}`;
+}
+export function getGlobalTopic(
+  connection: Pick<RehauConnection, "installationSlug">,
+  type: "outsideTemperature" | "operationMode" | "operationStatus",
+): string {
+  const domain = type === "outsideTemperature" ? "sensor" : "select";
+
+  return `${mqttTopic}/${domain}/${connection.installationSlug}_${type}`;
+}
+
+export function getGlobalAvailabilityTopic(
+  connection: Pick<RehauConnection, "installationSlug">,
+): string {
+  return `rehau2MQTT/${connection.installationSlug}_availability`;
 }
 
 export function parseRoomTopic(
@@ -83,7 +98,7 @@ export function createRoomMqttConfig(
       "Standby",
       "Timed",
       "Party",
-      "HolidayAbsence",
+      "Holiday",
     ],
     availability_topic: `${baseTopic}/${TOPIC_AVAILABILITY}`,
     payload_available: "online",
@@ -144,3 +159,74 @@ export function createRoomHumiditySensorMqttConfig(
     device_class: "humidity",
   };
 }
+
+
+
+export function createOutsideTemperatureSensorConfig(connection: RehauConnection): Record<string, unknown> {
+
+  const entityId = `${connection.installationName}_outsideTemperature`;
+  const baseTopic = getGlobalTopic(connection, "outsideTemperature");
+
+  return {
+    name: "Outside temperature",
+    unique_id: entityId,
+    state_topic: `${baseTopic}/${TOPIC_STATE}`,
+    unit_of_measurement: "°C",
+    device_class: "temperature",
+    state_class: "measurement",
+    availability_topic: getGlobalAvailabilityTopic(connection),
+    payload_available: "online",
+    payload_not_available: "offline",
+    device: deviceData(connection),
+  }
+};
+
+export function createOperationModeSelectConfig(connection: RehauConnection): Record<string, unknown> {
+
+  const entityId = `${connection.installationName}_operationMode`;
+  const baseTopic = getGlobalTopic(connection, "operationMode");
+  
+  return {
+    name: "Operation Mode",
+    unique_id: entityId,
+    state_topic: `${baseTopic}/${TOPIC_STATE}`,
+    command_topic: `${baseTopic}/${TOPIC_COMMAND}`,
+    options: [
+      "Auto",
+      "Heating",
+      "Cooling",
+      "ManualHeating",
+      "ManualCooling",
+    ],
+    availability_topic: getGlobalAvailabilityTopic(connection),
+    payload_available: "online",
+    payload_not_available: "offline",
+    device: deviceData(connection),
+  }
+};
+
+export function createGlobalOperatingStatusSelectConfig(connection: RehauConnection): Record<string, unknown> {
+
+  const entityId = `${connection.installationName}_operationStatus`;
+  const baseTopic = getGlobalTopic(connection, "operationStatus");
+  
+  return {
+    name: "Operation Status",
+    unique_id: entityId,
+    state_topic: `${baseTopic}/${TOPIC_STATE}`,
+    command_topic: `${baseTopic}/${TOPIC_COMMAND}`,
+    options: [
+      "Mixed",
+      "Normal",
+      "Reduced",
+      "Standby",
+      "Timed",
+      "Party",
+      "Holiday",
+    ],
+    availability_topic: getGlobalAvailabilityTopic(connection),
+    payload_available: "online",
+    payload_not_available: "offline",
+    device: deviceData(connection),
+  }
+};

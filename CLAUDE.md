@@ -29,7 +29,7 @@ No test or lint scripts are configured yet.
 REHAU NEA SMART 2.0
       ↕ Modbus TCP (slave on configured host:port, unit ID)
   ModbusServer.ts
-      ↕ RoomUpdate events (created | mode | setpoint | temperature | humidity)
+      ↕ RoomUpdate events (config | mode | setpoint | temperature | humidity)
   MqttClient.ts
       ↕ MQTT  homeassistant/climate/rehau_room_{id}/{subtopic}
   Home Assistant
@@ -51,13 +51,13 @@ REHAU NEA SMART 2.0
 - Enum values match Modbus wire values (1-based); `Null = 10` is the empty sentinel
 
 **`src/ModbusServer.ts`** — Modbus TCP server using `modbus-serial`:
-- `setRegister(data, addr, value): RoomUpdate[]` — updates a single register; returns `[{kind:'created'}, {kind:fieldType}]` for new rooms, `[{kind:fieldType}]` for existing ones, `[]` for global registers
+- `setRegister(data, addr, value): RoomUpdate[]` — updates a single register; returns `[{kind:'config'}, {kind:fieldType}]` for new rooms, `[{kind:fieldType}]` for existing ones, `[]` for global registers
 - `startModbusServer(connection, host, port, onRoomUpdate?)` — starts server, calls `onRoomUpdate` for every update from `setRegisterArray`
 - `getHoldingRegister` creates rooms with default values on first read (REHAU probing)
 
 **`src/MqttClient.ts`** — MQTT client using `mqtt`:
 - `startMqttClient(connection)` returns `{ stop, onRoomUpdate }`
-- `onRoomUpdate` publishes to the specific topic matching the update kind; `created` publishes discovery config + availability
+- `onRoomUpdate` publishes to the specific topic matching the update kind; `config` publishes discovery config + availability
 - Subscribes to `{mqttTopic}/#`; ignores messages for unknown rooms or rooms with empty (uninitialized) data
 
 **`src/mqttDiscovery.ts`** — MQTT topic constants (`TOPIC_*`), `parseRoomTopic`, `getRoomBaseTopic`, and `createRoomMqttConfig` (builds Home Assistant MQTT discovery payload)

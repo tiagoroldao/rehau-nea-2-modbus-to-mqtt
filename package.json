@@ -1,6 +1,6 @@
 {
   "name": "rehau-nea-2-modbus-to-mqtt",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "main": "index",
   "type": "module",
   "repository": "https://github.com/tiagoroldao/rehau-nea-2-modbus-to-mqtt.git",
@@ -8,7 +8,8 @@
   "license": "MIT",
   "scripts": {
     "dev-run": "ts-node src/main.ts",
-    "build": "tsup src/main.ts"
+    "build": "tsup src/main.ts",
+    "test-local": "export MQTT_HOST=localhost && export MQTT_PORT=1883 && export LOG_LEVEL=debug && node ha-rehau-modbus-2-mqtt/dist/main.js"
   },
   "dependencies": {
     "modbus-serial": "^8.0.25",

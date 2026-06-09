@@ -12,9 +12,14 @@ import {
   type RehauConnection,
   RehauOperationStatus,
   type RehauRoom,
-  type RoomUpdate,
+  type RehauUpdate,
   EMPTY_TEMP_VALUE,
   EMPTY_HUMIDITY_VALUE,
+  isSystemCooling,
+  RehauGlobalOperationMode,
+  type RehauRoomUpdate,
+  type RehauGlobalUpdate,
+  isRoomUpdate,
 } from "./RehauData";
 import {
   TOPIC_TEMPERATURE_COMMAND,
@@ -33,12 +38,18 @@ import {
   TOPIC_STATE,
   createRoomHumiditySensorMqttConfig,
   createRoomTempSensorMqttConfig,
+  getGlobalAvailabilityTopic,
+  getGlobalTopic,
+  createOutsideTemperatureSensorConfig,
+  createOperationModeSelectConfig,
+  createGlobalOperatingStatusSelectConfig,
+  TOPIC_COMMAND,
 } from "./mqttDiscovery";
 
 function roomModeToHaMode(mode: RehauOperationStatus): string {
   switch (mode) {
     case RehauOperationStatus.Standby:
-    case RehauOperationStatus.HolidayAbsence:
+    case RehauOperationStatus.Holiday:
       return "off";
     case RehauOperationStatus.Timed:
       return "auto";
@@ -47,28 +58,84 @@ function roomModeToHaMode(mode: RehauOperationStatus): string {
   }
 }
 
-function publishRoom(
+function publishGlobalUpdate(
   client: mqtt.MqttClient,
-  update: RoomUpdate,
+  update: RehauGlobalUpdate,
   connection: RehauConnection,
 ): void {
-  const room = connection.data.rooms.find((r) => r.id === update.roomId);
+  switch (update.kind) {
+    case "globalMode":
+      if (connection.data.globalMode !== RehauGlobalOperationMode.Null) {
+        client.publish(
+          `${getGlobalTopic(connection, "operationMode")}/${TOPIC_STATE}`,
+          RehauGlobalOperationMode[connection.data.globalMode],
+          { retain: true },
+        );
+
+        for (const room of connection.data.rooms) {
+          publishRoomUpdate(client, { kind: "config", roomId: room.id }, connection);
+          publishRoomUpdate(client, { kind: "mode", roomId: room.id }, connection);
+        }
+      }
+      break;
+    case "globalOperationStatus":
+      if (connection.data.globalOperationStatus !== RehauOperationStatus.Null) {
+        client.publish(
+          `${getGlobalTopic(connection, "operationStatus")}/${TOPIC_STATE}`,
+          RehauOperationStatus[connection.data.globalOperationStatus],
+          { retain: true },
+        );
+      }
+      break;
+    case "outsideTemperature":
+      if (connection.data.outsideTemperature !== EMPTY_TEMP_VALUE) {
+        client.publish(
+          `${getGlobalTopic(connection, "outsideTemperature")}/${TOPIC_STATE}`,
+          connection.data.outsideTemperature.toFixed(1),
+        );
+      }
+      break;
+    case "onlineState":
+      client.publish(getGlobalAvailabilityTopic(connection), connection.data.online ? "online" : "offline", {
+        retain: true,
+      });
+      if (!connection.data.online) {
+        for (const room of connection.data.rooms) {
+          client.publish(`${getRoomTopic(room.id, connection)}/${TOPIC_AVAILABILITY}`, "offline", {
+            retain: true,
+          });
+        }
+      }
+      break;
+  }
+}
+
+function publishRoomUpdate(
+  client: mqtt.MqttClient,
+  update: RehauRoomUpdate,
+  connection: RehauConnection,
+): void {
+  const room = connection.data.rooms.find(
+    (r) => Object.hasOwn(update, "roomId") && r.id === update.roomId,
+  );
   if (!room) return;
 
   const base = getRoomTopic(room.id, connection);
 
   switch (update.kind) {
-    case "created":
+    case "config":
       const info = JSON.stringify(createRoomMqttConfig(room, connection));
       logger.debug("Publishing MQTT room info for room %s: %o", room.id, info);
       client.publish(`${base}/${TOPIC_CONFIG}`, info, { retain: true });
       client.publish(
         `${getRoomTopic(room.id, connection, "temperature")}/${TOPIC_CONFIG}`,
         JSON.stringify(createRoomTempSensorMqttConfig(room, connection)),
+        { retain: true },
       );
       client.publish(
         `${getRoomTopic(room.id, connection, "humidity")}/${TOPIC_CONFIG}`,
         JSON.stringify(createRoomHumiditySensorMqttConfig(room, connection)),
+        { retain: true },
       );
       client.publish(`${base}/${TOPIC_AVAILABILITY}`, "online", {
         retain: true,
@@ -123,12 +190,17 @@ function publishRoom(
       break;
     case "mode":
       if (room.mode !== RehauOperationStatus.Null) {
+        let mode = "off";
+
+        if (room.mode !== RehauOperationStatus.Standby) {
+          mode = isSystemCooling(connection.data) ? "cool" : "heat";
+        }
         logger.debug(
           "Publishing MQTT mode for room %s: %s",
           room.id,
-          roomModeToHaMode(room.mode),
+          RehauOperationStatus[room.mode],
         );
-        client.publish(`${base}/${TOPIC_MODE}`, roomModeToHaMode(room.mode));
+        client.publish(`${base}/${TOPIC_MODE}`, mode);
         client.publish(
           `${base}/${TOPIC_PRESET}`,
           RehauOperationStatus[room.mode],
@@ -138,9 +210,21 @@ function publishRoom(
   }
 }
 
+function publishUpdate(
+  client: mqtt.MqttClient,
+  update: RehauUpdate,
+  connection: RehauConnection,
+): void {
+  if (isRoomUpdate(update)) {
+    publishRoomUpdate(client, update, connection);
+  } else {
+    publishGlobalUpdate(client, update, connection);
+  }
+}
+
 export function startMqttClient(connection: RehauConnection): {
   stop: () => void;
-  onRoomUpdate: (update: RoomUpdate) => void;
+  onUpdate: (update: RehauUpdate) => void;
 } {
   const opts: mqtt.IClientOptions = {
     host: mqttHost,
@@ -157,9 +241,41 @@ export function startMqttClient(connection: RehauConnection): {
     client.subscribe(`${mqttTopic}/climate/#`, (err) => {
       if (err) logger.error("MQTT subscribe error: %s", err.message);
     });
+    client.subscribe(`${getGlobalTopic(connection, "operationMode")}/${TOPIC_COMMAND}`, (err) => {
+      if (err) logger.error("MQTT subscribe error: %s", err.message);
+    });
+    client.subscribe(`${getGlobalTopic(connection, "operationStatus")}/${TOPIC_COMMAND}`, (err) => {
+      if (err) logger.error("MQTT subscribe error: %s", err.message);
+    });
+
+    client.publish(
+      `${getGlobalTopic(connection, "outsideTemperature")}/${TOPIC_CONFIG}`,
+      JSON.stringify(createOutsideTemperatureSensorConfig(connection)),
+      { retain: true },
+    );
+    client.publish(
+      `${getGlobalTopic(connection, "operationMode")}/${TOPIC_CONFIG}`,
+      JSON.stringify(createOperationModeSelectConfig(connection)),
+      { retain: true },
+    );
+    client.publish(
+      `${getGlobalTopic(connection, "operationStatus")}/${TOPIC_CONFIG}`,
+      JSON.stringify(createGlobalOperatingStatusSelectConfig(connection)),
+      { retain: true },
+    );
+    client.publish(getGlobalAvailabilityTopic(connection), "online", {
+      retain: true,
+    });
   });
 
   client.on("message", (topic, message) => {
+    if (topic === `${getGlobalTopic(connection, "operationMode")}/${TOPIC_COMMAND}`) {
+      connection.data.globalMode = RehauGlobalOperationMode[message.toString() as keyof typeof RehauGlobalOperationMode] ?? connection.data.globalMode;
+      return;
+    } else if (topic === `${getGlobalTopic(connection, "operationStatus")}/${TOPIC_COMMAND}`) {
+      connection.data.globalOperationStatus = RehauOperationStatus[message.toString() as keyof typeof RehauOperationStatus] ?? connection.data.globalOperationStatus;
+      return;
+    } 
     const parsed = parseRoomTopic(topic, connection);
     if (!parsed) return;
     const { roomId, subtopic } = parsed;
@@ -208,7 +324,12 @@ export function startMqttClient(connection: RehauConnection): {
   client.on("error", (err) => logger.error("MQTT error: %o", err));
 
   return {
-    stop: () => client.end(),
-    onRoomUpdate: (update) => publishRoom(client, update, connection),
+    stop: () => {
+      client.publish(getGlobalAvailabilityTopic(connection), "offline", {
+        retain: true,
+      });
+      client.end();
+    },
+    onUpdate: (update) => publishUpdate(client, update, connection),
   };
 }

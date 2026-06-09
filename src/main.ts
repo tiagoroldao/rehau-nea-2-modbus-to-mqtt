@@ -22,7 +22,7 @@ const connection: RehauConnection = {
     data: createDefaultData(),
 };
 
-const { stop: stopMqtt, onRoomUpdate } = startMqttClient(connection);
+const { stop: stopMqtt, onUpdate: onRoomUpdate } = startMqttClient(connection);
 const stopModbus = startModbusServer(connection, modbusHost, modbusPort, onRoomUpdate);
 
 process.on("SIGINT",  () => { stopModbus(); stopMqtt(); });

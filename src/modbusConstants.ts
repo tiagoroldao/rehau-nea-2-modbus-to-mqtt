@@ -41,3 +41,5 @@ export const REG_PUMP_LAST  = 35;
 
 export const MAX_SETPOINT_CELCIUS = 30;
 export const MIN_SETPOINT_CELCIUS = 5;
+
+export const CONNECTION_TIMEOUT_MS = 10000;
